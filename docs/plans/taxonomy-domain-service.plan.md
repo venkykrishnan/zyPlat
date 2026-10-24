@@ -7,7 +7,7 @@ Build a REST service that supports:
 1. CRUD for taxonomy definitions
 2. CRUD for taxonomy entities
 3. CRUD for domain definitions
-4. CRUD for company definitions/metadata
+4. CRUD for company definitions and report metadata
 5. CRUD for domain instances
 6. CRUD for domain-instance entities (time-series and scalar)
 
@@ -57,11 +57,13 @@ This plan still applies with that stack; only framework/ORM syntax changes.
 - `company_id` (string logical id, unique)
 - `name` (string, unique)
 - `description` (string)
+- `company_type` (enum: `LENDER` | `BORROWER` | `PARTICIPANT`)
 - `customer_id` (optional string for grouping/tenant hierarchy)
 - `is_enabled` (bool)
 - `is_test` (bool)
 - `naics_code` (optional string)
 - `state` (optional string)
+- `report_info` (jsonb array; each item includes `report_date` and associated domain-instance snapshot ids)
 - `metadata` (jsonb for extensibility)
 - `created_at`, `updated_at`
 
@@ -271,6 +273,12 @@ Base path: `/v1`
 - `PUT /companies/{companyId}`
 - `DELETE /companies/{companyId}`
 
+`PUT /companies/{companyId}` supports:
+
+- `company_type`
+- `report_info`
+- core metadata fields (`description`, `customer_id`, `is_enabled`, `is_test`, `naics_code`, `state`, `metadata`)
+
 Company snapshots:
 
 - `POST /companies/{companyId}/snapshots`
@@ -387,6 +395,7 @@ The design can support ciqFE-like taxonomy/domain data with adapters:
 - Taxonomy-backed dimension value validation against scope.
 - Period canonicalization by granularity.
 - Company-level default snapshot resolution by `(company, period, highest ord)`.
+- `report_info` payload validation (`report_date` format + domain-instance snapshot ownership by company).
 
 ## 8) Implementation phases
 
@@ -409,7 +418,7 @@ The design can support ciqFE-like taxonomy/domain data with adapters:
 
 ## Phase 3: company service + domain instances
 
-- Implement company CRUD and metadata updates.
+- Implement company CRUD and updates for `company_type` and `report_info`.
 - Implement company snapshot tuple service and default resolution.
 - Implement domain instance CRUD.
 - Implement scalar instance entity CRUD and validation logic.

@@ -18,6 +18,7 @@ Scope reflected here:
 3. One domain instance exists per `(domain_definition_id, company_id)` in V1.
 4. Default company snapshot is highest `ord` for `(company_id, period_type, period_value)`.
 5. For scalar domains, rows can be stored without a snapshot association.
+6. `report_info` is an application-managed array of report records (`report_date` + related domain-instance snapshot ids).
 
 ## 1) Extensions
 
@@ -29,6 +30,8 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 ```sql
 CREATE TYPE definition_scope AS ENUM ('GLOBAL', 'COMPANY');
+
+CREATE TYPE company_type AS ENUM ('LENDER', 'BORROWER', 'PARTICIPANT');
 
 CREATE TYPE domain_kind AS ENUM ('TIME_SERIES', 'SCALAR');
 
@@ -72,16 +75,19 @@ CREATE TABLE companies (
   company_id TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
+  company_type company_type NOT NULL,
   customer_id TEXT NULL,
   is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   is_test BOOLEAN NOT NULL DEFAULT FALSE,
   naics_code TEXT NULL,
   state TEXT NULL,
+  report_info JSONB NOT NULL DEFAULT '[]'::jsonb,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT ck_companies_company_id_not_empty CHECK (length(trim(company_id)) > 0),
   CONSTRAINT ck_companies_name_not_empty CHECK (length(trim(name)) > 0),
+  CONSTRAINT ck_companies_report_info_array CHECK (jsonb_typeof(report_info) = 'array'),
   CONSTRAINT ck_companies_metadata_object CHECK (jsonb_typeof(metadata) = 'object')
 );
 
@@ -90,6 +96,21 @@ CREATE INDEX ix_companies_is_enabled ON companies(is_enabled);
 CREATE INDEX ix_companies_is_test ON companies(is_test);
 CREATE INDEX ix_companies_naics_code ON companies(naics_code);
 CREATE INDEX ix_companies_state ON companies(state);
+CREATE INDEX ix_companies_company_type ON companies(company_type);
+```
+
+`report_info` payload shape (validated in service layer) should follow:
+
+```json
+[
+  {
+    "report_date": "2026-09",
+    "domain_instance_snapshot_ids": [
+      "uuid-1",
+      "uuid-2"
+    ]
+  }
+]
 ```
 
 ```sql
@@ -436,6 +457,7 @@ DB constraints enforce structure, but these remain in application logic:
 9. Scalar-domain rule: permit null `domain_instance_snapshot_id`; time-series-domain rule: require non-null snapshot association.
 10. Domain snapshot association must match company identity:
     - `domain_instances.company_id` must equal `company_snapshots.company_id` via `domain_instance_snapshots`.
+11. `companies.report_info` items must contain valid `report_date` and only domain-instance snapshot ids that belong to the same company.
 
 ## 9) Query for default company snapshot (highest ord)
 
