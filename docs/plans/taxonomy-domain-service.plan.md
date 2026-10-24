@@ -393,3 +393,7 @@ The design can support ciqFE-like taxonomy/domain data with adapters:
 4. Seed/import examples (including ciqFE-adapter examples)
 5. Runbook for local setup and CI usage
 
+## 12) Linked schema draft
+
+- V1 SQL schema draft: `docs/plans/taxonomy-domain-v1-schema.md`
+
