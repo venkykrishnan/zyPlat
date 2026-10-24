@@ -38,12 +38,21 @@ There are some key differences in this current proposal.
 2. Is this proposed solution going to be able to support ciqFE's taxonomy and domains? What changes do the input
 data (from ciqFE) need?
 
+## Resolutions
+
+The working design is [docs/plans/taxonomy-domain-service.md](../plans/taxonomy-domain-service.md). Short answers:
+
+1. One service with two aggregates (taxonomy, domain) over a relational store. Taxonomies are versioned: a published version is immutable, and edits happen on a single draft cloned from it. Entities store only their direct classifications; effective classifications are the union along the path from the root and are what the API returns. A domain dimension pins a published taxonomy version (defaulting to the latest published version at configuration time). A domain instance selects which of the inherited classifications apply and snapshots those pins. Base entities (empty effective classifications) are always legal on an instance. Any other taxonomy entity is legal when its effective classifications intersect the instance's selection.
+2. Yes, as a data load. ciqFE's standard taxonomies become ordinary rows. `isSOR: true` becomes a direct classification such as `SOR`, and `isSOR: false` becomes a base entity. Each hierarchy needs exactly one root. Taxonomies are published before a domain dimension can pin them, and each domain instance lists the classifications it enables. Identifier-safe `code` values have to be supplied where the source only had a display label. The ciqFE repository itself was not readable here, so this mapping follows the differences described above rather than a source audit.
+
 ## Use cases to be supported
 
-1. A CRUD API for taxonomy & domains
-2. A CRUD for instantiating entities for taxonomy
-3. A CRUD for instantiating a domain.
-4. A CRUD for entities in that domain's instance.
+1. CRUD for a taxonomy: create a hierarchical or flat taxonomy with its allowed classification names, read and update it, and delete it when no domain still pins it.
+2. CRUD for taxonomy entities on the draft, including a single root and parent links when the taxonomy is hierarchical. Reads return direct classifications and computed effective classifications. Publish freezes a version; opening a draft clones that version so later edits do not change it.
+3. CRUD for a domain whose dimensions each pin a published taxonomy version and inherit that version's classification names.
+4. CRUD for a domain instance that selects a subset of the inherited classifications (base always included) and snapshots the dimension pins.
+5. CRUD for entities in a domain instance. Each dimension value is a taxonomy entity code that is either base or classified with at least one classification the instance selected.
+6. Read the taxonomy entities that are legal for one dimension of an instance, and read a specific published version after newer drafts exist.
 
 ## Steps to be taken
 
@@ -53,3 +62,7 @@ data (from ciqFE) need?
 4. Get my input on the the proposed plan. Then update the goal, especially the
 use cases to be supported, and the plans based on this review.
 5. Implement the plan especially with unit and integration tests.
+
+## Status
+
+The plan records the structure, the ciqFE data mapping, and the API. The service in this repo implements that plan, including unit and integration tests. Review comments on the plan's choices (in particular version pinning, and intersection versus subset when an entity carries more than one classification) can still change the use cases above.
