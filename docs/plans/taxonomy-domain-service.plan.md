@@ -7,8 +7,9 @@ Build a REST service that supports:
 1. CRUD for taxonomy definitions
 2. CRUD for taxonomy entities
 3. CRUD for domain definitions
-4. CRUD for domain instances
-5. CRUD for domain-instance entities (time-series and scalar)
+4. CRUD for company definitions/metadata
+5. CRUD for domain instances
+6. CRUD for domain-instance entities (time-series and scalar)
 
 This plan follows `docs/Goals/TaxonomyAndDomain.md` and incorporates clarifications:
 
@@ -16,8 +17,11 @@ This plan follows `docs/Goals/TaxonomyAndDomain.md` and incorporates clarificati
 - Taxonomy versioning exists; domain versioning does not.
 - Domain schemas include dimensions and metrics.
 - Domains support both time-series and scalar use.
+- Taxonomy and domain definitions can be global or company-scoped.
+- Domain instances are strongly associated with a company.
 - Time-series domain instances support period granularity: year, quarter, month, date.
-- Time-series snapshots are versioned by ordinal (`ord`) per `(domain, company, period)` key.
+- Company service owns snapshot tuple association `(company, period, ord)` and default resolution.
+- Terminology in zyPlat uses `company` (not `borrower`).
 
 ## 2) Recommended technology choices
 
@@ -45,6 +49,22 @@ This plan still applies with that stack; only framework/ORM syntax changes.
 
 ## 3) Core domain model
 
+## 3.0 Company definition
+
+`companies`
+
+- `id` (UUID, PK)
+- `company_id` (string logical id, unique)
+- `name` (string, unique)
+- `description` (string)
+- `customer_id` (optional string for grouping/tenant hierarchy)
+- `is_enabled` (bool)
+- `is_test` (bool)
+- `naics_code` (optional string)
+- `state` (optional string)
+- `metadata` (jsonb for extensibility)
+- `created_at`, `updated_at`
+
 ## 3.1 Taxonomy definition
 
 `taxonomy_definitions`
@@ -55,6 +75,8 @@ This plan still applies with that stack; only framework/ORM syntax changes.
 - `description` (string)
 - `is_hierarchical` (bool)
 - `allowed_classifications` (text array, default empty)
+- `scope_type` (enum: `GLOBAL` | `COMPANY`)
+- `owner_company_id` (nullable FK to company, required for `COMPANY` scope)
 - `is_published` (bool)
 - `published_at` (timestamp nullable)
 - `is_default` (bool)
@@ -62,8 +84,9 @@ This plan still applies with that stack; only framework/ORM syntax changes.
 
 Constraints:
 
-- unique: `(taxonomy_id, version)`
-- one default per taxonomy_id (partial unique index on `is_default = true`)
+- unique: `(scope_type, owner_company_id, taxonomy_id, version)`
+- one default per `(scope_type, owner_company_id, taxonomy_id)`
+- if `scope_type = COMPANY`, `owner_company_id` is required
 
 ## 3.2 Taxonomy entities
 
@@ -92,14 +115,17 @@ Constraints and rules:
 `domain_definitions`
 
 - `id` (UUID, PK)
-- `domain_id` (string, unique logical id; e.g. `GL`, `Inventory`)
+- `domain_id` (string logical id; e.g. `GL`, `Inventory`)
 - `description` (string)
 - `kind` (enum: `TIME_SERIES` | `SCALAR`)
+- `scope_type` (enum: `GLOBAL` | `COMPANY`)
+- `owner_company_id` (nullable FK to company, required for `COMPANY` scope)
 - `created_at`, `updated_at`
 
 Notes:
 
 - Domain schemas include dimensions and metrics.
+- uniqueness is by scope: `(scope_type, owner_company_id, domain_id)`
 - No version column on domains per clarified requirement.
 
 ## 3.4 Domain dimensions
@@ -148,7 +174,7 @@ Constraints:
 
 - `id` (UUID, PK)
 - `domain_definition_id` (FK)
-- `company_id` (string; borrower id)
+- `company_id` (FK to `companies`)
 - `classification_scope` (text array, default empty)
 - `created_at`, `updated_at`
 
@@ -157,41 +183,52 @@ Rules:
 - `classification_scope` values must be in the taxonomy classifications referenced by domain taxonomy-backed dimensions.
 - Base entities (no classification) are always valid and do not require scope membership.
 
-## 3.7 Time-series snapshots (for TIME_SERIES domains)
+## 3.7 Company snapshot tuples (for TIME_SERIES domains)
 
-`domain_instance_snapshots`
+`company_snapshots`
 
 - `id` (UUID, PK; snapshot id)
-- `domain_instance_id` (FK)
+- `company_id` (FK)
 - `period_type` (enum: YEAR | QUARTER | MONTH | DATE)
 - `period_value` (string canonicalized: `YYYY`, `YYYYQn`, `YYYY-MM`, `YYYY-MM-DD`)
-- `ord` (int; monotonically increasing per `(domain_instance_id, period_type, period_value)`)
-- `is_default` (bool; optional materialization)
+- `ord` (int; monotonically increasing per `(company_id, period_type, period_value)`)
 - `created_at`, `updated_at`
 
 Constraints:
 
-- unique: `(domain_instance_id, period_type, period_value, ord)`
-- if materializing `is_default`, enforce one default per `(domain_instance_id, period_type, period_value)`
+- unique: `(company_id, period_type, period_value, ord)`
 
 Default rule:
 
-- Default snapshot is highest `ord` for `(domain_instance_id, period_type, period_value)`.
-- Optionally maintain with trigger/transactional service update for quick reads.
+- Default snapshot is highest `ord` for `(company_id, period_type, period_value)`.
+- Company service exposes and resolves this default.
 
-## 3.8 Domain-instance entities
+## 3.8 Domain snapshot associations
+
+`domain_instance_snapshots`
+
+- `id` (UUID, PK)
+- `domain_instance_id` (FK)
+- `company_snapshot_id` (FK -> company_snapshots.id)
+- `created_at`, `updated_at`
+
+Constraints:
+
+- unique: `(domain_instance_id, company_snapshot_id)`
+
+## 3.9 Domain-instance entities
 
 `domain_instance_entities`
 
 - `id` (UUID, PK)
 - `domain_instance_id` (FK)
-- `snapshot_id` (nullable FK -> domain_instance_snapshots.id; required for TIME_SERIES, null for SCALAR if desired)
+- `domain_instance_snapshot_id` (nullable FK -> domain_instance_snapshots.id; required for TIME_SERIES, null for SCALAR if desired)
 - `data` (jsonb)
 - `created_at`, `updated_at`
 
 Rules:
 
-- For TIME_SERIES domain, `snapshot_id` is required.
+- For TIME_SERIES domain, `domain_instance_snapshot_id` is required.
 - For SCALAR domain, either:
   - keep one synthetic snapshot per instance, or
   - allow null snapshot and enforce one active row contract.
@@ -218,9 +255,33 @@ When writing domain-instance entity data:
    - entity has no effective classification (base), or
    - `intersection(effective_classifications, classification_scope)` is non-empty.
 
+Additionally for time-series rows:
+
+5. `domain_instance_snapshot_id` must resolve to a snapshot whose company snapshot belongs to the same company as the domain instance.
+
 ## 5) API design (v1)
 
 Base path: `/v1`
+
+## 5.0 Company definitions and snapshots
+
+- `POST /companies`
+- `GET /companies`
+- `GET /companies/{companyId}`
+- `PUT /companies/{companyId}`
+- `DELETE /companies/{companyId}`
+
+Company snapshots:
+
+- `POST /companies/{companyId}/snapshots`
+  - request includes: `periodType`, `periodValue`
+  - server computes next `ord`
+- `GET /companies/{companyId}/snapshots`
+  - optional filter: `periodType`, `periodValue`
+- `GET /companies/{companyId}/snapshots/default`
+  - requires `periodType`, `periodValue`; returns highest-ord snapshot
+- `GET /companies/{companyId}/snapshots/{snapshotId}`
+- `DELETE /companies/{companyId}/snapshots/{snapshotId}`
 
 ## 5.1 Taxonomy definitions
 
@@ -232,6 +293,11 @@ Base path: `/v1`
 - `POST /taxonomies/{taxonomyId}/versions/{version}/publish`
 - `POST /taxonomies/{taxonomyId}/versions/{version}/unpublish`
 - `POST /taxonomies/{taxonomyId}/versions/{version}/set-default`
+
+Scope filtering behavior:
+
+- global definitions are always returned
+- company-scoped definitions are returned only for the requesting company
 
 ## 5.2 Taxonomy entities
 
@@ -249,6 +315,11 @@ Base path: `/v1`
 - `GET /domains/{domainId}`
 - `PUT /domains/{domainId}`
 - `DELETE /domains/{domainId}`
+
+Scope filtering behavior:
+
+- global definitions are always returned
+- company-scoped definitions are returned only for the requesting company
 
 Dimensions:
 
@@ -275,12 +346,10 @@ Metrics:
 ## 5.5 Time-series snapshots
 
 - `POST /domain-instances/{instanceId}/snapshots`
-  - request includes: `periodType`, `periodValue`, `rows`
-  - server computes next `ord`
+  - request includes: `companySnapshotId`
+  - associates a domain instance with a company snapshot tuple
 - `GET /domain-instances/{instanceId}/snapshots`
-  - optional filter: `periodType`, `periodValue`
-- `GET /domain-instances/{instanceId}/snapshots/default`
-  - requires `periodType`, `periodValue`; returns highest-ord snapshot
+  - optional filter: `companySnapshotId`, `periodType`, `periodValue`
 - `GET /domain-instances/{instanceId}/snapshots/{snapshotId}`
 - `DELETE /domain-instances/{instanceId}/snapshots/{snapshotId}`
 
@@ -300,7 +369,7 @@ The design can support ciqFE-like taxonomy/domain data with adapters:
 2. Map `isSOR` to classification labels (e.g. `["SOR"]`) in import transform.
 3. Preserve hierarchy and parent ids.
 4. Add taxonomy version strategy for domain taxonomy-bound dimensions.
-5. Introduce domain instance and snapshot records where ciqFE uses period-based imported snapshots.
+5. Introduce company snapshots and domain-instance snapshot associations where ciqFE uses period-based imported snapshots.
 
 ## 7) Validation and integrity strategy
 
@@ -317,6 +386,7 @@ The design can support ciqFE-like taxonomy/domain data with adapters:
 - Classification inheritance evaluation.
 - Taxonomy-backed dimension value validation against scope.
 - Period canonicalization by granularity.
+- Company-level default snapshot resolution by `(company, period, highest ord)`.
 
 ## 8) Implementation phases
 
@@ -334,17 +404,19 @@ The design can support ciqFE-like taxonomy/domain data with adapters:
 ## Phase 2: domain definitions
 
 - Implement domain, dimensions, metrics CRUD.
+- Implement global/company scope filtering and ownership checks.
 - Implement taxonomy binding validation in dimensions.
 
-## Phase 3: domain instances and scalar rows
+## Phase 3: company service + domain instances
 
+- Implement company CRUD and metadata updates.
+- Implement company snapshot tuple service and default resolution.
 - Implement domain instance CRUD.
 - Implement scalar instance entity CRUD and validation logic.
 
-## Phase 4: time-series snapshots
+## Phase 4: domain time-series snapshots
 
-- Implement period model and snapshot ord rules.
-- Implement default snapshot resolution endpoints.
+- Implement company snapshot association endpoints on domain instances.
 - Implement row CRUD tied to snapshots.
 
 ## Phase 5: migration/import utilities
@@ -365,16 +437,18 @@ The design can support ciqFE-like taxonomy/domain data with adapters:
 - Classification inheritance (multi-level).
 - Hierarchy cycle detection.
 - Taxonomy version resolution (pinned vs latest published).
+- global/company visibility filtering on taxonomy and domain definitions.
 - Scope checks for taxonomy-backed dimensions.
 - Period parser/normalizer by granularity.
-- Snapshot ordinal assignment and default selection.
+- Company snapshot ordinal assignment and default selection.
+- Domain-instance to company-snapshot association integrity.
 
 ## Integration tests
 
-- Full CRUD flows for taxonomy/domain/domain-instance.
+- Full CRUD flows for company/taxonomy/domain/domain-instance.
 - Hierarchical taxonomy + classified entity insertion and update.
-- Time-series snapshot creation across multiple ords for same company/period.
-- Default snapshot retrieval for highest ord.
+- Time-series company snapshot creation across multiple ords for same company/period.
+- Default company snapshot retrieval for highest ord.
 - Validation failures for unpublished/pinned taxonomy version mismatch.
 
 ## 10) Open design decisions to confirm before implementation
@@ -382,7 +456,7 @@ The design can support ciqFE-like taxonomy/domain data with adapters:
 1. Should taxonomy `version` be semantic string (e.g. `1.0`) or integer?
 2. Should a domain dimension allow `LATEST_PUBLISHED` only, or both strategies from day one?
 3. For scalar domains, do we require a synthetic snapshot or allow direct unsnapshotted rows?
-4. Should default snapshot always be highest ord, or manually overrideable?
+4. Should default company snapshot always be highest ord, or manually overrideable?
 5. Do we need soft delete and audit trail fields in v1?
 
 ## 11) Deliverables
