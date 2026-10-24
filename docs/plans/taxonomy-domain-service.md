@@ -1,170 +1,85 @@
-# Plan: Taxonomy and domain service
+# Review and proposal: taxonomy and domain service
 
-This plan answers the open questions in [TaxonomyAndDomain.md](../Goals/TaxonomyAndDomain.md) and is the design the service implements.
+This is a review of [TaxonomyAndDomain.md](../Goals/TaxonomyAndDomain.md). It is not an implementation plan with settled tables. No service code belongs in the repo until this proposal has been reviewed and the ciqFE schemas have been read.
 
-## Resolutions
+An earlier pass implemented a service before either of those happened. That code has been removed.
 
-### 1. Recommended structure
+## Access check
 
-One modular service, two aggregates, one relational database. Taxonomies and domains share classification inheritance, publication, and "which values are legal on an instance," so splitting them into separately deployed services would duplicate those rules without a scaling reason. Configuration data is small, highly relational, and always edited inside a transaction (publish a version, pin it, admit a value).
+Checked 24 October 2026, about 2:15pm Pacific.
 
-```text
-HTTP (FastAPI)
-  taxonomies  ──► Taxonomy aggregate
-  domains     ──► Domain aggregate
-                    │
-                    ▼
-            classification + hierarchy rules
-                    │
-                    ▼
-            SQLAlchemy  ──► PostgreSQL
-```
+This agent does not have access to ciqFE.
 
-**Taxonomy aggregate**
+The cloud agent calls GitHub as the Cursor GitHub App installation, not as a personal login. That installation currently has one repository: `venkykrishnan/zyPlat`. This run's environment is also bound only to `github.com/venkykrishnan/zyplat`.
 
-- A taxonomy is an identity: name, description, and whether it is hierarchical. `isHierarchical` is fixed at creation.
-- Configuration that can change (the allowed classification names, and the entities) lives on a **version**.
-- A version is either `draft` or `published`. Published versions are immutable.
-- There is at most one draft. The first version is a draft. `POST .../publish` freezes it. Further edits require `POST .../draft`, which clones the latest published version into version N+1.
-- Entities belong to a version. `code` is the stable business key (unique within a version). Database ids are new on each clone, so clients address entities by code.
-- Classifications stored on an entity are the ones assigned **directly** to it. Effective classifications are computed: walk from the root to the entity and union the direct values, first-seen order, no duplicates. Children do not store inherited values. Adding `CIQ` to a parent immediately shows up on every descendant's `effectiveClassifications`.
-- A direct classification list is only additive relative to ancestors. The API cannot record an exception that strips a parent classification.
-- An entity with an empty effective set is a **base** entity. `base` is not a stored classification name; that word is reserved.
-- Hierarchical taxonomies are a single tree: exactly one root (`parentCode` null), every other entity has a parent, no cycles. The root is created first. This is checked on every write and again at publish. Flat taxonomies reject parent links.
-- A hierarchical taxonomy cannot be published until it has its root.
+`GET /repos/venkykrishnan/ciqFE` returns 404. `git ls-remote https://github.com/venkykrishnan/ciqFE.git` returns "Repository not found." The same result comes back for `ciqfe`, `CIQFE`, and `ciq-fe`.
 
-**Domain aggregate**
+A 404 from this token means the app cannot see the repo. It does not distinguish "no such repo" from "private and not granted." Access that is visible in a browser session does not automatically extend to this installation.
 
-- A domain is a named definition plus one or more **dimensions**. Each dimension pins a taxonomy and a **published** version. Omitting the version resolves it to the latest published version at that moment and stores the number. It is not a floating "always latest" pointer. A draft version cannot be pinned.
-- The domain's inherited classifications are the union of `allowedClassifications` on those pinned versions, in dimension order, then declaration order, duplicates removed.
-- A domain **instance** selects a subset of those inherited classifications (the subset may be empty). Base is always allowed and is not listed. The instance copies the dimension pins, so a later edit to the domain definition does not change existing instances.
-- An instance **entity** supplies a value for every dimension (a taxonomy entity code) plus its own code, name, and an optional JSON `attributes` object.
-- A taxonomy entity is a legal dimension value when it is base, or when its effective classifications intersect the instance's selected classifications. An entity tagged `[CIQ, EDGAR]` is legal on a CIQ-only instance because it is classified as CIQ. An entity tagged only `[EDGAR]` is not. Subset semantics (every tag on the entity must be selected) was rejected: the goal's inheritance example forces descendants of `Revenue [CIQ, EDGAR]` to keep both tags, and those descendants would otherwise be unusable on a single-classification instance.
+To make the next pass able to read it:
 
-References from domains and instances use `ON DELETE RESTRICT`. Deleting a taxonomy that is still pinned returns 409.
+1. On the GitHub account or organization that owns ciqFE, open Settings → Applications → Cursor → Configure.
+2. Under Repository access, include `ciqFE`, or switch to All repositories, and save.
+3. If ciqFE is owned by someone other than `venkykrishnan`, install the Cursor GitHub App on that owner as well.
+4. If the repository name or owner is not `venkykrishnan/ciqFE`, send the exact `owner/name`.
 
-### 2. Can this support ciqFE taxonomies and domains?
+After that, a new agent run should list ciqFE from `GET /installation/repositories`. This run's token still does not.
 
-The [ciqFE](https://github.com/venkykrishnan/ciqFE) repository was not readable from this environment (GitHub returned 404), so this mapping is from the differences the goal describes, not from a source audit.
+## Review of the goal
 
-Yes, as a data load, not as a binary-compatible API.
+ciqFE is the source of the taxonomy and domain concepts. This service is a configurable version of those concepts, with a few stated differences:
 
-| ciqFE idea | What the input has to become |
-| --- | --- |
-| Standard taxonomies and domains that are not configurable | Ordinary rows. Nothing is built in. |
-| `isSOR` boolean on an entity | A classification the operator names. Use `SOR` unless ciqFE used another word. `isSOR: true` → `classifications: ["SOR"]`. `isSOR: false` → `classifications: []` (base). Declare `SOR` on the taxonomy's `allowedClassifications`. |
-| Hierarchical taxonomy such as `accountType` | `isHierarchical: true` and exactly one root. If the source has no root, add a synthetic root and parent the current top-level nodes under it. If it has several roots, either add that synthetic root or choose one and reparent the others. |
-| Parent links and entity identity | Stable `code` values, unique inside the taxonomy. Names stay display names. |
-| Configurable domain dimension (inventory class, GL account type) | A dimension whose `taxonomyName` (or id) points at that taxonomy. |
-| Unpublished or unversioned source | Import entities into the draft, then publish. Domains can pin only a published version. First import is version 1. |
-| A domain instance that "uses SOR" or "uses CIQ" | `classifications` on the instance lists those names. Base entities remain legal without being listed. |
-| Flags other than `isSOR` | Another classification name if the flag restricts which instances may use the entity. Extra payload that is not a taxonomy goes on the instance entity's `attributes`. |
+- There is no separate class of standard taxonomies or domains. All of them are configuration.
+- A taxonomy is hierarchical or flat. A hierarchical taxonomy has a root entity. `accountType` is the example of a hierarchy.
+- An entity is a base entity unless it carries classifications. The classification list replaces ciqFE's `isSOR` boolean and is more general. The allowed names are configured on the taxonomy. Each entity holds some of those names.
+- When a taxonomy is hierarchical, a parent's classifications are inherited by every descendant. The goal's example is `Revenue [CIQ, EDGAR]`: `Product Revenue` has at least `[CIQ, EDGAR]`. Storage may keep only the values assigned on an entity. The API still has to return the inherited result.
+- A taxonomy carries configuration such as whether it is hierarchical, the allowed classifications, created and modified times, a version, and whether it is published. The service supports CRUD for the taxonomy and CRUD for its entities.
+- A domain is also configuration. A dimension on a domain takes its legal values from one taxonomy's entities. The example is a general-ledger domain whose `accountType` dimension is the `accountType` taxonomy. The dimension records which taxonomy version it uses. That version is published. If the caller does not name one, the default is the latest published version.
+- If a dimension's taxonomy has classifications, the domain inherits them. An instance of the domain says which of those classifications it uses. Only those, plus base entities, are legal values on that instance. The example is a general-ledger instance limited to `CIQ`: an `accountType` value is legal when it is base, or when it is classified as `CIQ`.
 
-Load order: taxonomies and their entities, publish, domains with pins, instances with a classification selection, then instance entities. Codes that are only display labels with spaces or punctuation have to be given identifier codes (`productRevenue`); the human label goes in `name`.
+The use cases in the goal are CRUD for taxonomies and domains, CRUD for taxonomy entities, CRUD for a domain instance, and CRUD for the entities stored on that instance.
 
-This service does not model read-only system taxonomies, a live "track latest published version" pin, multiple roots, or auth. Those are the gaps to decide before calling the mapping done.
+## What cannot be proposed yet
 
-### Other design choices
+Open question 2 asks whether this model can carry ciqFE's taxonomies and domains, and what the input data has to change. That answer is a reading of ciqFE's types. A field list written without those types is a guess, and it is not possible to tell whether the guess matches the system this service is supposed to borrow from.
 
-- **Auth, tenants, and audit history of field diffs** are out of scope. `createdAt` and `updatedAt` are the only timestamps besides `publishedAt`.
-- **Lists are unordered configuration sets**, returned in full (by name, or tree preorder for hierarchical entities). No cursor pagination.
-- **Identifiers** (`name` on taxonomies, domains, dimensions, instances; `code` on entities) match `^[A-Za-z][A-Za-z0-9_-]{0,127}$`. Classification names use the same shape with a max length of 64, and `base` is reserved. Comparison is case-sensitive.
-- **Display `name` on an entity** is free text, 1–256 characters. **Description** is optional, up to 4000 characters.
-- **Rename** of a taxonomy or domain is allowed. Pins store ids, so a rename does not break them.
-- **`isHierarchical` does not change** after create. **Allowed classifications** change only on a draft, and a name cannot be removed while a draft entity still lists it directly.
-- **Schema lifecycle:** tables are created from the SQLAlchemy metadata on startup. That is acceptable while there is no production data. Alembic should land before the first real data load; `create_all` will not alter tables that already exist.
+The same applies to the stack. The goal asks for a language, a framework, and a persistent store. The default should be ciqFE's language, framework, and store, unless the differences above force a split. Choosing those before reading the repo would define a second system beside ciqFE rather than a schema for it.
 
-## Stack
+## What the ciqFE reading will produce
 
-| Concern | Choice |
-| --- | --- |
-| Language | Python 3.12 |
-| HTTP | FastAPI, Pydantic v2, OpenAPI at `/docs` |
-| Persistence | PostgreSQL in any shared environment. SQLAlchemy 2 talks to it through `ZYPLAT_DATABASE_URL` (`postgresql+psycopg://...`, extra `postgres`). |
-| Local and tests | SQLite, same models and services. Foreign keys are enabled. Tests use an in-memory database per test. |
-| Server | uvicorn (`zyplat` / `python -m zyplat.main`) |
+The next revision of this plan, once the repo is readable, will be a schema proposal in this form:
 
-Python keeps the service and its tests in one language and runs without a database daemon. The model is ordinary relational data (uniqueness, restricted deletes, a transaction around publish and clone), which is PostgreSQL's job once more than one process is writing. SQLite is the same schema, not a second model.
-
-## API
-
-Base path `/api/v1`. JSON is camelCase. Errors:
-
-```json
-{ "error": { "code": "draft_required", "message": "...", "details": {} } }
-```
-
-Request-shape failures are HTTP 422 `validation_error`. Domain rule failures are 400. Missing resources are 404. Conflicts (duplicate name or code, edit of a published version, delete that is still referenced) are 409.
-
-### Taxonomies
-
-| Method | Path | Purpose |
+| ciqFE type | Fields that matter | What the goal changes |
 | --- | --- | --- |
-| POST | `/taxonomies` | Create identity and draft version 1 |
-| GET | `/taxonomies` | List |
-| GET | `/taxonomies/{id}` | Identity, latest version, latest published version number |
-| PATCH | `/taxonomies/{id}` | Name, description; `allowedClassifications` only while a draft is open |
-| DELETE | `/taxonomies/{id}` | Reject when a domain or instance still pins a version |
-| POST | `/taxonomies/{id}/publish` | Freeze the draft |
-| POST | `/taxonomies/{id}/draft` | Clone the latest published version into a new draft |
-| GET | `/taxonomies/{id}/versions` | Version summaries |
-| GET | `/taxonomies/{id}/versions/{version}` | One summary |
-| GET | `/taxonomies/{id}/entities?version=&classification=` | Entities of a version. Default version is the latest. `classification=base` or a name filters on **effective** classifications |
-| POST | `/taxonomies/{id}/entities` | Add an entity to the draft |
-| GET | `/taxonomies/{id}/entities/{code}?version=` | One entity |
-| PATCH | `/taxonomies/{id}/entities/{code}` | Draft only: name, parent, direct classifications |
-| DELETE | `/taxonomies/{id}/entities/{code}` | Draft only; reject when it has children |
+| filled from the code | filled from the code | filled from the goal |
 
-Entity JSON includes `classifications` (direct), `effectiveClassifications`, `isBase`, `parentCode`, and `depth`.
+The reading will look for:
 
-### Domains
+- The taxonomy type and the taxonomy-entity type, including how a standard taxonomy differs from a configurable one.
+- `isSOR` and any other per-entity flags that sit next to it.
+- How a hierarchy is stored, whether a root is required, and whether more than one root occurs.
+- Version, publish, created, and modified fields, if they exist, and what "version" identifies.
+- The domain type, a dimension such as `inventoryClass` or `accountType`, and the reference from that dimension to a taxonomy.
+- Whether ciqFE already separates a domain definition from an instance of that domain, and what a row inside an instance contains.
+- The language, framework, and database those types already use.
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| POST | `/domains` | Definition and dimensions (`taxonomyId` or `taxonomyName`, optional `version`) |
-| GET | `/domains` | List |
-| GET | `/domains/{id}` | Definition, dimensions, `inheritedClassifications` |
-| PATCH | `/domains/{id}` | Name, description, or a full replacement of `dimensions` |
-| DELETE | `/domains/{id}` | Reject while any instance exists |
-| POST | `/domains/{id}/instances` | Instance. Body: `name`, `classifications` (subset of inherited) |
-| GET | `/domains/{id}/instances` | List |
-| GET | `/domain-instances/{id}` | Instance, including its snapshotted dimensions |
-| PATCH | `/domain-instances/{id}` | Name or `classifications`. Narrowing the set is rejected when an existing entity would become illegal |
-| DELETE | `/domain-instances/{id}` | Deletes its entities |
-| POST | `/domain-instances/{id}/entities` | Body: `code`, `name`, `dimensions` map of dimension name → taxonomy code, optional `attributes` |
-| GET | `/domain-instances/{id}/entities` | List |
-| GET | `/domain-instances/{id}/entities/{code}` | One |
-| PATCH | `/domain-instances/{id}/entities/{code}` | Name, dimensions, attributes. `code` is immutable |
-| DELETE | `/domain-instances/{id}/entities/{code}` | Delete |
-| GET | `/domain-instances/{id}/dimensions/{name}/values` | Taxonomy entities that are legal for that dimension on this instance |
+That table is the schema proposal. It is also the answer to what ciqFE input data has to change.
 
-`GET /health` returns `{"status":"ok"}`.
+## What can be said before that reading
 
-## Worked example
+These stay as requirements. They are not a table design.
 
-`accountType` is hierarchical with allowed classifications `CIQ` and `EDGAR`. Root `accountType` is base. Child `revenue` is directly `[CIQ, EDGAR]`. Child `productRevenue` stores `[]` and its effective classifications are `[CIQ, EDGAR]`. Sibling `expense` is base. Sibling `edgarOnly` is directly `[EDGAR]`.
+1. Taxonomies and domains are configuration data. Nothing is built in.
+2. Classification names are configured on the taxonomy. An entity holds a subset. Descendants keep the classifications of their ancestors. The API exposes that inherited set.
+3. A domain dimension refers to one published taxonomy version.
+4. A domain instance names which of the inherited classifications it uses. Base entities stay legal on every instance.
+5. The service offers the four CRUD surfaces in the goal. It does not get built in the same step as this proposal.
 
-Publish that version. Domain `generalLedger` has dimension `accountType` pinned to it, so the domain inherits `[CIQ, EDGAR]`. Instance `ciqGl` selects `[CIQ]`.
+Two rules in the goal are still open. ciqFE may already imply the answer, so they should be decided from the code when it is readable, and confirmed in review:
 
-| Dimension value | On `ciqGl` |
-| --- | --- |
-| `productRevenue` | Allowed (effective set contains CIQ) |
-| `expense` | Allowed (base) |
-| `edgarOnly` | Rejected |
+- An entity that carries more than one classification. The instance example says a value is legal when it is base or classified as `CIQ`. It does not say what happens when one entity is classified as both `CIQ` and `EDGAR` and the instance selected only `CIQ`.
+- "Default is the latest published." That can mean the version number that was latest when the dimension was configured, stored and kept, or a live pointer that moves when a newer version is published.
 
-Opening a later draft and clearing `revenue`'s classifications changes the draft only. The instance still reads the published version it pinned.
+## After review
 
-## Tests
-
-Unit tests cover effective-classification union order, dedupe, cycle detection, tree rules (no root, two roots, disconnect, flat parent), and the admissibility rule.
-
-API tests drive the account-type / general-ledger story above, plus publish immutability, draft clone, version pinning (default latest published, reject a draft pin), classification edit rules, hierarchy write rules, domain and instance CRUD, and deletes that are still referenced.
-
-Run `pytest` from the repo root after `pip install -e ".[dev]"`.
-
-## Follow-ups, not in this build
-
-- Alembic migrations before the first persisted environment.
-- Bulk entity import for a ciqFE extract.
-- Auth and a tenant boundary, if instances from different ledgers share one deployment.
-- A floating pin that means "latest published" for callers who want that instead of a stored version number.
+When ciqFE is visible to this agent, the schema table above gets filled in and this plan is updated. Implementation stays the step after that review, which is step 5 in the goal.
