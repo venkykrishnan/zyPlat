@@ -462,11 +462,13 @@ The design can support ciqFE-like taxonomy/domain data with adapters:
 
 ## 10) Open design decisions to confirm before implementation
 
-1. Should taxonomy `version` be semantic string (e.g. `1.0`) or integer?
-2. Should a domain dimension allow `LATEST_PUBLISHED` only, or both strategies from day one?
-3. For scalar domains, do we require a synthetic snapshot or allow direct unsnapshotted rows?
-4. Should default company snapshot always be highest ord, or manually overrideable?
-5. Do we need soft delete and audit trail fields in v1?
+The following decisions are now confirmed:
+
+1. Taxonomy `version`: **integer**
+2. Domain taxonomy strategy: **both `LATEST_PUBLISHED` and `PINNED` in v1**
+3. Scalar domain snapshot policy: **nullable snapshot allowed**
+4. Default company snapshot behavior: **always highest `ord`**
+5. Soft delete and audit trail in v1: **no**
 
 ## 11) Deliverables
 
