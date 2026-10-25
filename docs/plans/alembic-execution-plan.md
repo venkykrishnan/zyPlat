@@ -24,13 +24,18 @@ The draft migration is already committed under:
 
 - `db/alembic/versions/20261024_0001_initial_company_taxonomy_domain.py`
 
-During implementation bootstrap, add:
+Alembic runtime templates are now committed as draft scaffolding:
 
 - `db/alembic.ini`
 - `db/alembic/env.py`
 - `db/alembic/script.py.mako`
 
-and set `script_location = db/alembic` in `alembic.ini`.
+If path conventions change later, update these files accordingly.
+
+During implementation bootstrap, ensure:
+
+- `script_location = db/alembic` remains set in `db/alembic.ini`
+- environment variables (`ALEMBIC_DATABASE_URL` or `DATABASE_URL`) are provided for runtime
 
 ## 4) Bootstrap steps
 
