@@ -48,14 +48,27 @@ During implementation bootstrap, ensure:
 4. Ensure target metadata import is configured for future autogenerate use.
 5. Keep this initial revision as an explicit handcrafted baseline migration.
 
+## 4.1 Standard developer commands
+
+A `Makefile` now provides common migration workflow commands:
+
+- `make db-up` (start local Postgres container)
+- `make db-migrate` (run `upgrade head`)
+- `make db-downgrade` (run `downgrade -1`)
+- `make db-verify` (run schema checks in `scripts/db/verify_schema.sql`)
+- `make db-down` (stop local Postgres container)
+
 ## 5) Apply migration (local/dev)
 
-1. Create a fresh dev database.
-2. Run:
-   - `alembic -c db/alembic.ini upgrade head`
+1. Start local DB:
+   - `make db-up`
+2. Apply migration:
+   - `make db-migrate`
 3. Validate alembic version table:
    - `SELECT * FROM alembic_version;`
 4. Confirm revision id is `20261024_0001`.
+5. Run schema checks:
+   - `make db-verify`
 
 ## 6) Verification checklist
 
@@ -76,10 +89,10 @@ After migration, verify:
 ## 7) Rollback procedure (dev only)
 
 1. Run:
-   - `alembic -c db/alembic.ini downgrade -1`
+   - `make db-downgrade`
 2. Validate schema objects are removed.
 3. Re-run upgrade to confirm migration remains reversible:
-   - `alembic -c db/alembic.ini upgrade head`
+   - `make db-migrate`
 
 ## 8) CI execution plan
 
@@ -101,7 +114,7 @@ For PR checks:
 ## 10) Immediate next actions
 
 1. Scaffold FastAPI/SQLAlchemy project skeleton.
-2. Add Alembic runtime config files (`alembic.ini`, `env.py`).
-3. Execute this migration on local Postgres.
+2. Execute this migration on local Postgres with `make db-up` + `make db-migrate`.
+3. Run `make db-verify` and capture output in CI logs.
 4. Add migration smoke tests in CI.
 
