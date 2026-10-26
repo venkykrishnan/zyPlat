@@ -1,0 +1,44 @@
+{
+  "companyId": "BORR002",
+  "companyName": "Cascade Manufacturing Corp",
+  "domainId": "LoanPayment",
+  "domainName": "Loan Payment",
+  "instanceId": "BORR002_LP_001",
+  "classifications": ["CIQ"],
+  "createdAt": "2026-10-26T10:00:00Z",
+  "modifiedAt": "2026-10-26T10:00:00Z",
+  "data": [
+    {
+      "loanId": "LOAN-MFG-001",
+      "loanType": "TermLoan",
+      "dueDate": "2026-09-01",
+      "paidDate": "2026-09-01",
+      "period": "2026-09",
+      "status": "Paid",
+      "interestRate": 0.072,
+      "interestDue": 21000,
+      "interestPaid": 21000,
+      "principalDue": 42000,
+      "principalPaid": 42000,
+      "totalDue": 63000,
+      "totalPaid": 63000,
+      "endingBalance": 3500000
+    },
+    {
+      "loanId": "LOAN-MFG-002",
+      "loanType": "BridgeLoan",
+      "dueDate": "2026-09-15",
+      "paidDate": "2026-09-16",
+      "period": "2026-09",
+      "status": "Paid Late",
+      "interestRate": 0.095,
+      "interestDue": 4000,
+      "interestPaid": 4200,
+      "principalDue": 250000,
+      "principalPaid": 250000,
+      "totalDue": 254000,
+      "totalPaid": 254200,
+      "endingBalance": 250000
+    }
+  ]
+}

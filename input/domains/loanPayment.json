@@ -1,0 +1,121 @@
+{
+  "id": "LoanPayment",
+  "name": "Loan Payment",
+  "description": "Loan payment records for tracking principal and interest payments",
+  "isTimeSeries": true,
+  "isConfigurable": true,
+  "version": "1.0.0",
+  "createdAt": "2026-10-26T10:00:00Z",
+  "modifiedAt": "2026-10-26T10:00:00Z",
+  "dataSchema": {
+    "dimensions": [
+      {
+        "name": "loanId",
+        "type": "String",
+        "displayName": "Loan ID",
+        "isFilter": true,
+        "required": true
+      },
+      {
+        "name": "loanType",
+        "type": "Taxonomy",
+        "displayName": "Loan Type",
+        "isFilter": true,
+        "required": true,
+        "taxonomyRef": {
+          "taxonomyId": "loanType",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "name": "dueDate",
+        "type": "DateTime",
+        "displayName": "Due Date",
+        "isFilter": true,
+        "required": true,
+        "dateTimeScope": "DateMonthYear"
+      },
+      {
+        "name": "paidDate",
+        "type": "DateTime",
+        "displayName": "Paid Date",
+        "isFilter": true,
+        "required": false,
+        "dateTimeScope": "DateMonthYear"
+      },
+      {
+        "name": "period",
+        "type": "DateTime",
+        "displayName": "Period",
+        "isFilter": true,
+        "required": true,
+        "dateTimeScope": "MonthYear"
+      },
+      {
+        "name": "status",
+        "type": "String",
+        "displayName": "Status",
+        "isFilter": true,
+        "required": true
+      }
+    ],
+    "metrics": [
+      {
+        "name": "interestRate",
+        "type": "Number",
+        "displayName": "Interest Rate",
+        "isPointInTime": true,
+        "required": false
+      },
+      {
+        "name": "interestDue",
+        "type": "Number",
+        "displayName": "Interest Due",
+        "isPointInTime": false,
+        "required": true
+      },
+      {
+        "name": "interestPaid",
+        "type": "Number",
+        "displayName": "Interest Paid",
+        "isPointInTime": false,
+        "required": false
+      },
+      {
+        "name": "principalDue",
+        "type": "Number",
+        "displayName": "Principal Due",
+        "isPointInTime": false,
+        "required": true
+      },
+      {
+        "name": "principalPaid",
+        "type": "Number",
+        "displayName": "Principal Paid",
+        "isPointInTime": false,
+        "required": false
+      },
+      {
+        "name": "totalDue",
+        "type": "Number",
+        "displayName": "Total Due",
+        "isPointInTime": false,
+        "required": true
+      },
+      {
+        "name": "totalPaid",
+        "type": "Number",
+        "displayName": "Total Paid",
+        "isPointInTime": false,
+        "required": false
+      },
+      {
+        "name": "endingBalance",
+        "type": "Number",
+        "displayName": "Ending Balance",
+        "isPointInTime": true,
+        "required": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "id": "loanType",
+  "name": "Loan Type",
+  "description": "Taxonomy for different types of loans and credit facilities",
+  "isHierarchical": false,
+  "classifications": ["CIQ"],
+  "version": "1.0.0",
+  "isPublished": true,
+  "createdAt": "2026-10-26T10:00:00Z",
+  "modifiedAt": "2026-10-26T10:00:00Z",
+  "entities": [
+    {
+      "id": "Senior",
+      "value": "Senior Loan",
+      "description": "Senior secured loans with highest priority in repayment",
+      "displayName": "Senior Loan",
+      "classifications": ["CIQ"],
+      "aliases": ["Senior Secured", "First Lien"],
+      "keywords": ["secured", "priority", "senior"],
+      "parent": null,
+      "isRoot": false
+    },
+    {
+      "id": "Mezzanine",
+      "value": "Mezzanine Loan",
+      "description": "Subordinated debt with equity-like features",
+      "displayName": "Mezzanine Loan",
+      "classifications": ["CIQ"],
+      "aliases": ["Mezz", "Subordinated Debt"],
+      "keywords": ["subordinated", "hybrid"],
+      "parent": null,
+      "isRoot": false
+    },
+    {
+      "id": "Revolver",
+      "value": "Revolving Credit",
+      "description": "Revolving line of credit that can be drawn and repaid",
+      "displayName": "Revolving Credit",
+      "classifications": ["CIQ"],
+      "aliases": ["Revolver", "Credit Line", "LOC"],
+      "keywords": ["revolving", "line of credit"],
+      "parent": null,
+      "isRoot": false
+    },
+    {
+      "id": "CreditCard",
+      "value": "Credit Card",
+      "description": "Credit card debt and revolving consumer credit",
+      "displayName": "Credit Card",
+      "classifications": ["CIQ"],
+      "aliases": ["CC"],
+      "keywords": ["consumer", "card"],
+      "parent": null,
+      "isRoot": false
+    },
+    {
+      "id": "TermLoan",
+      "value": "Term Loan",
+      "description": "Fixed-term loan with scheduled repayment",
+      "displayName": "Term Loan",
+      "classifications": ["CIQ"],
+      "aliases": ["Term Debt"],
+      "keywords": ["term", "amortizing"],
+      "parent": null,
+      "isRoot": false
+    },
+    {
+      "id": "BridgeLoan",
+      "value": "Bridge Loan",
+      "description": "Short-term financing to bridge funding gaps",
+      "displayName": "Bridge Loan",
+      "classifications": ["CIQ"],
+      "aliases": ["Bridge Financing"],
+      "keywords": ["short-term", "temporary"],
+      "parent": null,
+      "isRoot": false
+    }
+  ]
+}
