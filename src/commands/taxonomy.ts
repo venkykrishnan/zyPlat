@@ -1,0 +1,249 @@
+import { Command } from 'commander';
+import chalk from 'chalk';
+import { ApiClient } from '../client/ApiClient';
+import { FileService } from '../services/FileService';
+import { Taxonomy, TaxonomyEntity } from '../models/Taxonomy';
+import * as path from 'path';
+
+const getApiClient = (apiUrl?: string) => new ApiClient(apiUrl);
+const fileService = new FileService();
+
+export const taxonomyCommand = new Command('taxonomy')
+  .alias('tax')
+  .description('Manage taxonomies')
+  .option('--api-url <url>', 'API base URL', 'http://localhost:3000/api');
+
+taxonomyCommand
+  .command('list')
+  .description('List all taxonomies')
+  .action(async (options, command) => {
+    try {
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+      const taxonomies = await client.listTaxonomies();
+      
+      if (taxonomies.length === 0) {
+        console.log(chalk.yellow('No taxonomies found'));
+        return;
+      }
+
+      console.log(chalk.bold('\nTaxonomies:\n'));
+      taxonomies.forEach(tax => {
+        console.log(chalk.cyan(`  ${tax.id}`) + chalk.gray(` (${tax.name})`));
+        console.log(chalk.gray(`    Hierarchical: ${tax.isHierarchical}, Entities: ${tax.entities.length}, Version: ${tax.version}`));
+      });
+      console.log('');
+    } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });
+
+taxonomyCommand
+  .command('get <id>')
+  .description('Get a taxonomy by id')
+  .option('-e, --entities', 'Show entities')
+  .action(async (id: string, options, command) => {
+    try {
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+      const taxonomy = await client.getTaxonomy(id);
+      
+      console.log(chalk.bold(`\nTaxonomy: ${taxonomy.name}\n`));
+      console.log(chalk.gray(`ID: ${taxonomy.id}`));
+      console.log(chalk.gray(`Description: ${taxonomy.description}`));
+      console.log(chalk.gray(`Hierarchical: ${taxonomy.isHierarchical}`));
+      console.log(chalk.gray(`Classifications: ${taxonomy.classifications.join(', ')}`));
+      console.log(chalk.gray(`Version: ${taxonomy.version}`));
+      console.log(chalk.gray(`Published: ${taxonomy.isPublished}`));
+      console.log(chalk.gray(`Entities: ${taxonomy.entities.length}`));
+
+      if (options.entities) {
+        console.log(chalk.bold('\nEntities:\n'));
+        taxonomy.entities.forEach(entity => {
+          const indent = entity.parent ? '  ' : '';
+          console.log(chalk.cyan(`${indent}${entity.id}`) + chalk.gray(` - ${entity.displayName}`));
+          if (entity.parent) {
+            console.log(chalk.gray(`${indent}  Parent: ${entity.parent}`));
+          }
+          if (entity.classifications.length > 0) {
+            console.log(chalk.gray(`${indent}  Classifications: ${entity.classifications.join(', ')}`));
+          }
+        });
+      }
+      console.log('');
+    } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });
+
+taxonomyCommand
+  .command('import')
+  .description('Import taxonomies from file')
+  .option('-f, --file <path>', 'Path to taxonomy JSON file')
+  .option('-d, --dir <path>', 'Directory containing taxonomy files', 'input/taxonomies')
+  .action(async (options, command) => {
+    try {
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      let files: string[] = [];
+      if (options.file) {
+        files = [path.resolve(options.file)];
+      } else {
+        const dir = path.resolve(options.dir);
+        files = fileService.listFiles(dir);
+      }
+
+      console.log(chalk.bold(`\nImporting taxonomies from ${files.length} file(s)...\n`));
+
+      let imported = 0;
+      let errors = 0;
+
+      for (const file of files) {
+        try {
+          const taxonomy = fileService.readJSON<Taxonomy>(file);
+          await client.createTaxonomy(taxonomy);
+          console.log(chalk.green(`✓ Imported taxonomy: ${taxonomy.id}`));
+          imported++;
+        } catch (error: any) {
+          console.log(chalk.red(`✗ Failed to import ${path.basename(file)}: ${error.response?.data?.error || error.message}`));
+          errors++;
+        }
+      }
+
+      console.log(chalk.bold(`\nImport complete: ${imported} succeeded, ${errors} failed\n`));
+    } catch (error: any) {
+      console.error(chalk.red('Error:'), error.message);
+      process.exit(1);
+    }
+  });
+
+taxonomyCommand
+  .command('create')
+  .description('Create a new taxonomy')
+  .requiredOption('-i, --id <id>', 'Taxonomy ID')
+  .requiredOption('-n, --name <name>', 'Taxonomy name')
+  .requiredOption('-d, --description <description>', 'Taxonomy description')
+  .option('-h, --hierarchical', 'Is hierarchical', false)
+  .option('-c, --classifications <classifications>', 'Comma-separated classifications', 'CIQ')
+  .action(async (options, command) => {
+    try {
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      const taxonomy: Taxonomy = {
+        id: options.id,
+        name: options.name,
+        description: options.description,
+        isHierarchical: options.hierarchical,
+        classifications: options.classifications.split(',').map((s: string) => s.trim()),
+        version: '1.0.0',
+        isPublished: true,
+        createdAt: '',
+        modifiedAt: '',
+        entities: []
+      };
+
+      await client.createTaxonomy(taxonomy);
+      console.log(chalk.green(`✓ Taxonomy '${taxonomy.id}' created successfully`));
+    } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });
+
+taxonomyCommand
+  .command('update <id>')
+  .description('Update a taxonomy')
+  .option('-n, --name <name>', 'Taxonomy name')
+  .option('-d, --description <description>', 'Taxonomy description')
+  .option('-p, --publish', 'Publish taxonomy')
+  .action(async (id: string, options, command) => {
+    try {
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      const updates: Partial<Taxonomy> = {};
+      if (options.name) updates.name = options.name;
+      if (options.description) updates.description = options.description;
+      if (options.publish !== undefined) updates.isPublished = true;
+
+      const updated = await client.updateTaxonomy(id, updates);
+      console.log(chalk.green(`✓ Taxonomy '${updated.id}' updated successfully`));
+    } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });
+
+taxonomyCommand
+  .command('delete <id>')
+  .description('Delete a taxonomy')
+  .action(async (id: string, options, command) => {
+    try {
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      await client.deleteTaxonomy(id);
+      console.log(chalk.green(`✓ Taxonomy '${id}' deleted successfully`));
+    } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });
+
+taxonomyCommand
+  .command('add-entity <taxonomyId>')
+  .description('Add an entity to a taxonomy')
+  .requiredOption('-i, --id <id>', 'Entity ID')
+  .requiredOption('-v, --value <value>', 'Entity value')
+  .requiredOption('-n, --name <name>', 'Display name')
+  .option('-d, --description <description>', 'Description', '')
+  .option('-p, --parent <parent>', 'Parent entity ID')
+  .option('-c, --classifications <classifications>', 'Comma-separated classifications')
+  .action(async (taxonomyId: string, options, command) => {
+    try {
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      const taxonomy = await client.getTaxonomy(taxonomyId);
+      
+      const entity: TaxonomyEntity = {
+        id: options.id,
+        value: options.value,
+        description: options.description,
+        displayName: options.name,
+        classifications: options.classifications 
+          ? options.classifications.split(',').map((s: string) => s.trim())
+          : taxonomy.classifications,
+        aliases: [],
+        keywords: [],
+        parent: options.parent || null,
+        isRoot: !options.parent
+      };
+
+      await client.addTaxonomyEntity(taxonomyId, entity);
+      console.log(chalk.green(`✓ Entity '${entity.id}' added to taxonomy '${taxonomyId}'`));
+    } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });
+
+taxonomyCommand
+  .command('delete-entity <taxonomyId> <entityId>')
+  .description('Delete an entity from a taxonomy')
+  .action(async (taxonomyId: string, entityId: string, options, command) => {
+    try {
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      await client.deleteTaxonomyEntity(taxonomyId, entityId);
+      console.log(chalk.green(`✓ Entity '${entityId}' deleted from taxonomy '${taxonomyId}'`));
+    } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });

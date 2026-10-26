@@ -1,0 +1,63 @@
+{
+  "id": "GL",
+  "name": "General Ledger",
+  "description": "General Ledger domain for financial accounting data",
+  "isTimeSeries": true,
+  "isConfigurable": true,
+  "version": "1.0.0",
+  "createdAt": "2026-10-26T18:48:19.829Z",
+  "modifiedAt": "2026-10-26T18:48:19.829Z",
+  "dataSchema": {
+    "dimensions": [
+      {
+        "name": "id",
+        "type": "Integer",
+        "displayName": "ID",
+        "isFilter": false,
+        "required": true
+      },
+      {
+        "name": "account",
+        "type": "String",
+        "displayName": "Account",
+        "isFilter": true,
+        "required": true
+      },
+      {
+        "name": "accountType",
+        "type": "Taxonomy",
+        "displayName": "Account Type",
+        "isFilter": true,
+        "required": true,
+        "taxonomyRef": {
+          "taxonomyId": "accountType",
+          "version": "1.0.0"
+        }
+      },
+      {
+        "name": "department",
+        "type": "String",
+        "displayName": "Department",
+        "isFilter": true,
+        "required": false
+      },
+      {
+        "name": "period",
+        "type": "DateTime",
+        "displayName": "Period",
+        "isFilter": true,
+        "required": true,
+        "dateTimeScope": "MonthYear"
+      }
+    ],
+    "metrics": [
+      {
+        "name": "amount",
+        "type": "Number",
+        "displayName": "Amount",
+        "isPointInTime": false,
+        "required": true
+      }
+    ]
+  }
+}

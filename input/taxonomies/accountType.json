@@ -1,0 +1,551 @@
+{
+  "id": "accountType",
+  "name": "Account Type",
+  "description": "Hierarchical taxonomy for chart of accounts classification",
+  "isHierarchical": true,
+  "classifications": [
+    "CIQ",
+    "EDGAR",
+    "GAAP"
+  ],
+  "version": "1.0.0",
+  "isPublished": true,
+  "createdAt": "2026-10-26T10:00:00Z",
+  "modifiedAt": "2026-10-26T18:07:45.610Z",
+  "entities": [
+    {
+      "id": "Balance_Sheet",
+      "value": "Balance Sheet",
+      "description": "Balance Sheet root category",
+      "displayName": "Balance Sheet",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": null,
+      "isRoot": true
+    },
+    {
+      "id": "Assets",
+      "value": "Assets",
+      "description": "Economic resources controlled by the company",
+      "displayName": "Assets",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Balance_Sheet",
+      "isRoot": false
+    },
+    {
+      "id": "Current_Assets",
+      "value": "Current Assets",
+      "description": "Assets expected to be realized within one year",
+      "displayName": "Current Assets",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Assets",
+      "isRoot": false
+    },
+    {
+      "id": "Cash",
+      "value": "Cash",
+      "description": "Highly liquid, short-term investments readily convertible to cash",
+      "displayName": "Cash",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "Cash and Cash Equivalents"
+      ],
+      "keywords": [
+        "liquid",
+        "currency"
+      ],
+      "parent": "Current_Assets",
+      "isRoot": false
+    },
+    {
+      "id": "Accounts_Receivable",
+      "value": "Accounts Receivable",
+      "description": "Amounts due from customers, net of allowance for doubtful accounts",
+      "displayName": "Accounts Receivable",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "AR",
+        "Trade Receivables"
+      ],
+      "keywords": [
+        "receivables",
+        "customers"
+      ],
+      "parent": "Current_Assets",
+      "isRoot": false
+    },
+    {
+      "id": "Other_Current_Assets",
+      "value": "Other Current Assets",
+      "description": "Current assets not classified elsewhere",
+      "displayName": "Other Current Assets",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Current_Assets",
+      "isRoot": false
+    },
+    {
+      "id": "Non_Current_Assets",
+      "value": "Non-Current Assets",
+      "description": "Assets not expected to be realized within one year",
+      "displayName": "Non-Current Assets",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "Long-term Assets"
+      ],
+      "keywords": [],
+      "parent": "Assets",
+      "isRoot": false
+    },
+    {
+      "id": "Fixed_Assets",
+      "value": "Fixed Assets",
+      "description": "Tangible long-term assets used in operations, net of accumulated depreciation",
+      "displayName": "Fixed Assets",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "PPE",
+        "Property, Plant and Equipment"
+      ],
+      "keywords": [
+        "tangible",
+        "depreciation"
+      ],
+      "parent": "Non_Current_Assets",
+      "isRoot": false
+    },
+    {
+      "id": "Other_Assets",
+      "value": "Other Assets",
+      "description": "Non-current assets not classified elsewhere",
+      "displayName": "Other Assets",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Non_Current_Assets",
+      "isRoot": false
+    },
+    {
+      "id": "Liabilities",
+      "value": "Liabilities",
+      "description": "Present obligations of the company",
+      "displayName": "Liabilities",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [
+        "obligations",
+        "debt"
+      ],
+      "parent": "Balance_Sheet",
+      "isRoot": false
+    },
+    {
+      "id": "Current_Liabilities",
+      "value": "Current Liabilities",
+      "description": "Obligations expected to be paid within one year",
+      "displayName": "Current Liabilities",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Liabilities",
+      "isRoot": false
+    },
+    {
+      "id": "Accounts_Payable",
+      "value": "Accounts Payable",
+      "description": "Liabilities payable to vendors for goods and services received",
+      "displayName": "Accounts Payable",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "AP",
+        "Trade Payables"
+      ],
+      "keywords": [
+        "vendors",
+        "suppliers"
+      ],
+      "parent": "Current_Liabilities",
+      "isRoot": false
+    },
+    {
+      "id": "Short_Term_Debt",
+      "value": "Short-Term Debt",
+      "description": "Debt obligations due within one year",
+      "displayName": "Short-Term Debt",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "Current Portion of Long-Term Debt"
+      ],
+      "keywords": [
+        "debt",
+        "borrowings"
+      ],
+      "parent": "Current_Liabilities",
+      "isRoot": false
+    },
+    {
+      "id": "Other_Current_Liabilities",
+      "value": "Other Current Liabilities",
+      "description": "Current liabilities not classified elsewhere",
+      "displayName": "Other Current Liabilities",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Current_Liabilities",
+      "isRoot": false
+    },
+    {
+      "id": "Non_Current_Liabilities",
+      "value": "Non-Current Liabilities",
+      "description": "Obligations due in more than one year",
+      "displayName": "Non-Current Liabilities",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "Long-term Liabilities"
+      ],
+      "keywords": [],
+      "parent": "Liabilities",
+      "isRoot": false
+    },
+    {
+      "id": "Long_Term_Debt",
+      "value": "Long-Term Debt",
+      "description": "Debt obligations due after one year",
+      "displayName": "Long-Term Debt",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "Senior Debt",
+        "Term Loans"
+      ],
+      "keywords": [
+        "debt",
+        "loans"
+      ],
+      "parent": "Non_Current_Liabilities",
+      "isRoot": false
+    },
+    {
+      "id": "Other_Non_Current_Liabilities",
+      "value": "Other Non-Current Liabilities",
+      "description": "Non-current liabilities not classified elsewhere",
+      "displayName": "Other Non-Current Liabilities",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Non_Current_Liabilities",
+      "isRoot": false
+    },
+    {
+      "id": "Equity",
+      "value": "Equity",
+      "description": "Residual interest in assets after deducting liabilities",
+      "displayName": "Equity",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "Shareholders' Equity",
+        "Stockholders' Equity"
+      ],
+      "keywords": [
+        "ownership"
+      ],
+      "parent": "Balance_Sheet",
+      "isRoot": false
+    },
+    {
+      "id": "Accumulated_Net_Income",
+      "value": "Accumulated Net Income",
+      "description": "Cumulative net income for the period",
+      "displayName": "Accumulated Net Income",
+      "classifications": [
+        "CIQ"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Equity",
+      "isRoot": false
+    },
+    {
+      "id": "Retained_Earnings",
+      "value": "Retained Earnings",
+      "description": "Accumulated profits not distributed as dividends",
+      "displayName": "Retained Earnings",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [
+        "profits",
+        "earnings"
+      ],
+      "parent": "Equity",
+      "isRoot": false
+    },
+    {
+      "id": "Other_Equity",
+      "value": "Other Equity",
+      "description": "Equity items not classified elsewhere",
+      "displayName": "Other Equity",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Equity",
+      "isRoot": false
+    },
+    {
+      "id": "Income_Statement",
+      "value": "Income Statement",
+      "description": "Income Statement root category",
+      "displayName": "Income Statement",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "P&L",
+        "Profit and Loss"
+      ],
+      "keywords": [],
+      "parent": null,
+      "isRoot": true
+    },
+    {
+      "id": "Revenue",
+      "value": "Revenue",
+      "description": "Revenue generated from primary business activities",
+      "displayName": "Revenue",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "Sales",
+        "Income"
+      ],
+      "keywords": [],
+      "parent": "Income_Statement",
+      "isRoot": false
+    },
+    {
+      "id": "Cost_of_Sales",
+      "value": "Cost of Sales",
+      "description": "Direct costs associated with generating core operating revenue",
+      "displayName": "Cost of Sales",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "COGS",
+        "Cost of Goods Sold"
+      ],
+      "keywords": [],
+      "parent": "Income_Statement",
+      "isRoot": false
+    },
+    {
+      "id": "Operating_Expenses",
+      "value": "Operating Expenses",
+      "description": "Costs incurred in normal course of business",
+      "displayName": "Operating Expenses",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "OpEx"
+      ],
+      "keywords": [],
+      "parent": "Income_Statement",
+      "isRoot": false
+    },
+    {
+      "id": "Depreciation",
+      "value": "Depreciation",
+      "description": "Systematic allocation of asset cost over useful life",
+      "displayName": "Depreciation",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Operating_Expenses",
+      "isRoot": false
+    },
+    {
+      "id": "Amortization",
+      "value": "Amortization",
+      "description": "Systematic allocation of intangible asset cost",
+      "displayName": "Amortization",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Operating_Expenses",
+      "isRoot": false
+    },
+    {
+      "id": "Non_Operating_Expense",
+      "value": "Non-Operating Expenses",
+      "description": "Expenses not related to core operations",
+      "displayName": "Non-Operating Expenses",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Income_Statement",
+      "isRoot": false
+    },
+    {
+      "id": "Interest_Expenses",
+      "value": "Interest Expenses",
+      "description": "Cost of borrowed funds",
+      "displayName": "Interest Expenses",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "Interest Expense"
+      ],
+      "keywords": [
+        "debt",
+        "interest"
+      ],
+      "parent": "Non_Operating_Expense",
+      "isRoot": false
+    },
+    {
+      "id": "Non_Operating_Income",
+      "value": "Non-Operating Income",
+      "description": "Income not related to core operations",
+      "displayName": "Non-Operating Income",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Income_Statement",
+      "isRoot": false
+    },
+    {
+      "id": "Interest_Income",
+      "value": "Interest Income",
+      "description": "Revenue from investments or lending activities",
+      "displayName": "Interest Income",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [
+        "investment",
+        "interest"
+      ],
+      "parent": "Non_Operating_Income",
+      "isRoot": false
+    },
+    {
+      "id": "Tax_Expenses",
+      "value": "Tax Expenses",
+      "description": "Income tax expense",
+      "displayName": "Tax Expenses",
+      "classifications": [
+        "CIQ",
+        "GAAP"
+      ],
+      "aliases": [
+        "Income Tax Expense"
+      ],
+      "keywords": [
+        "tax"
+      ],
+      "parent": "Non_Operating_Expense",
+      "isRoot": false
+    },
+    {
+      "id": "Test_Asset",
+      "value": "Test Asset",
+      "description": "A test asset type",
+      "displayName": "Test Asset",
+      "classifications": [
+        "CIQ",
+        "EDGAR",
+        "GAAP"
+      ],
+      "aliases": [],
+      "keywords": [],
+      "parent": "Assets",
+      "isRoot": false
+    }
+  ]
+}
