@@ -1,0 +1,139 @@
+[
+  {
+    "id": "LEND001",
+    "name": "Pinnacle Capital Partners",
+    "type": "lender",
+    "description": "Commercial lending institution specializing in middle-market businesses",
+    "industry": "Commercial_Lending",
+    "createdAt": "2026-10-26T10:00:00Z",
+    "modifiedAt": "2026-10-26T10:00:00Z",
+    "metadata": {
+      "headquarters": "New York, NY",
+      "founded": 2010,
+      "aum": 5000000000,
+      "activeLoans": 150
+    }
+  },
+  {
+    "id": "LEND002",
+    "name": "Sterling Bridge Finance",
+    "type": "lender",
+    "description": "Specialized bridge loan and short-term financing provider",
+    "industry": "Commercial_Lending",
+    "createdAt": "2026-10-26T10:00:00Z",
+    "modifiedAt": "2026-10-26T10:00:00Z",
+    "metadata": {
+      "headquarters": "San Francisco, CA",
+      "founded": 2015,
+      "aum": 2500000000,
+      "activeLoans": 85
+    }
+  },
+  {
+    "id": "LEND003",
+    "name": "Meridian Credit Group",
+    "type": "lender",
+    "description": "Diversified lender offering term loans and revolving credit facilities",
+    "industry": "Commercial_Lending",
+    "createdAt": "2026-10-26T10:00:00Z",
+    "modifiedAt": "2026-10-26T10:00:00Z",
+    "metadata": {
+      "headquarters": "Chicago, IL",
+      "founded": 2008,
+      "aum": 8000000000,
+      "activeLoans": 220
+    }
+  },
+  {
+    "id": "BORR001",
+    "name": "TechVenture Solutions",
+    "type": "borrower",
+    "description": "SaaS company providing enterprise resource planning solutions",
+    "industry": "Software",
+    "createdAt": "2026-10-26T10:00:00Z",
+    "modifiedAt": "2026-10-26T10:00:00Z",
+    "metadata": {
+      "headquarters": "Austin, TX",
+      "founded": 2018,
+      "employees": 250,
+      "revenue": 45000000,
+      "lenders": [
+        "LEND001",
+        "LEND003"
+      ]
+    }
+  },
+  {
+    "id": "BORR002",
+    "name": "Cascade Manufacturing Corp",
+    "type": "borrower",
+    "description": "Specialty manufacturing company producing industrial components",
+    "industry": "Manufacturing",
+    "createdAt": "2026-10-26T10:00:00Z",
+    "modifiedAt": "2026-10-26T10:00:00Z",
+    "metadata": {
+      "headquarters": "Portland, OR",
+      "founded": 2005,
+      "employees": 180,
+      "revenue": 32000000,
+      "lenders": [
+        "LEND001",
+        "LEND002"
+      ]
+    }
+  },
+  {
+    "id": "BORR003",
+    "name": "Wellness Medical Group",
+    "type": "borrower",
+    "description": "Healthcare services provider with multiple clinic locations",
+    "industry": "Healthcare",
+    "createdAt": "2026-10-26T10:00:00Z",
+    "modifiedAt": "2026-10-26T10:00:00Z",
+    "metadata": {
+      "headquarters": "Boston, MA",
+      "founded": 2012,
+      "employees": 420,
+      "revenue": 68000000,
+      "lenders": [
+        "LEND003"
+      ]
+    }
+  },
+  {
+    "id": "BORR004",
+    "name": "Quantum Analytics Inc",
+    "type": "borrower",
+    "description": "Data analytics and business intelligence software company",
+    "industry": "Software",
+    "createdAt": "2026-10-26T10:00:00Z",
+    "modifiedAt": "2026-10-26T10:00:00Z",
+    "metadata": {
+      "headquarters": "Seattle, WA",
+      "founded": 2019,
+      "employees": 95,
+      "revenue": 18000000,
+      "lenders": [
+        "LEND002"
+      ]
+    }
+  },
+  {
+    "id": "BORR005",
+    "name": "Redwood Industrial Supply",
+    "type": "borrower",
+    "description": "Distributor of industrial supplies and equipment",
+    "industry": "Manufacturing",
+    "createdAt": "2026-10-26T10:00:00Z",
+    "modifiedAt": "2026-10-26T10:00:00Z",
+    "metadata": {
+      "headquarters": "Denver, CO",
+      "founded": 2010,
+      "employees": 140,
+      "revenue": 28000000,
+      "lenders": [
+        "LEND001"
+      ]
+    }
+  }
+]

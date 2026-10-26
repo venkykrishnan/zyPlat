@@ -1,0 +1,68 @@
+{
+  "companyId": "BORR003",
+  "companyName": "Wellness Medical Group",
+  "domainId": "GL",
+  "domainName": "General Ledger",
+  "instanceId": "BORR003_GL_001",
+  "classifications": ["CIQ", "GAAP"],
+  "createdAt": "2026-10-26T10:00:00Z",
+  "modifiedAt": "2026-10-26T10:00:00Z",
+  "data": [
+    {
+      "id": 1,
+      "account": "1000",
+      "accountType": "Cash",
+      "department": "Corporate",
+      "period": "2026-09",
+      "amount": 3200000
+    },
+    {
+      "id": 2,
+      "account": "1200",
+      "accountType": "Accounts_Receivable",
+      "department": "Billing",
+      "period": "2026-09",
+      "amount": 4800000
+    },
+    {
+      "id": 3,
+      "account": "1500",
+      "accountType": "Fixed_Assets",
+      "department": "Facilities",
+      "period": "2026-09",
+      "amount": 8500000
+    },
+    {
+      "id": 4,
+      "account": "4000",
+      "accountType": "Revenue",
+      "department": "Clinical Services",
+      "period": "2026-09",
+      "amount": 6200000
+    },
+    {
+      "id": 5,
+      "account": "5000",
+      "accountType": "Cost_of_Sales",
+      "department": "Clinical Services",
+      "period": "2026-09",
+      "amount": 2800000
+    },
+    {
+      "id": 6,
+      "account": "6000",
+      "accountType": "Operating_Expenses",
+      "department": "Clinical Services",
+      "period": "2026-09",
+      "amount": 1650000
+    },
+    {
+      "id": 7,
+      "account": "6100",
+      "accountType": "Operating_Expenses",
+      "department": "G&A",
+      "period": "2026-09",
+      "amount": 820000
+    }
+  ]
+}

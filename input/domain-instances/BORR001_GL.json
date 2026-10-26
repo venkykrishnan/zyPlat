@@ -1,0 +1,92 @@
+{
+  "companyId": "BORR001",
+  "companyName": "TechVenture Solutions",
+  "domainId": "GL",
+  "domainName": "General Ledger",
+  "instanceId": "BORR001_GL_001",
+  "classifications": ["CIQ"],
+  "createdAt": "2026-10-26T10:00:00Z",
+  "modifiedAt": "2026-10-26T10:00:00Z",
+  "data": [
+    {
+      "id": 1,
+      "account": "1000",
+      "accountType": "Cash",
+      "department": "Corporate",
+      "period": "2026-09",
+      "amount": 2500000
+    },
+    {
+      "id": 2,
+      "account": "1200",
+      "accountType": "Accounts_Receivable",
+      "department": "Sales",
+      "period": "2026-09",
+      "amount": 3800000
+    },
+    {
+      "id": 3,
+      "account": "4000",
+      "accountType": "Revenue",
+      "department": "Sales",
+      "period": "2026-09",
+      "amount": 4200000
+    },
+    {
+      "id": 4,
+      "account": "5000",
+      "accountType": "Cost_of_Sales",
+      "department": "Operations",
+      "period": "2026-09",
+      "amount": 1200000
+    },
+    {
+      "id": 5,
+      "account": "6000",
+      "accountType": "Operating_Expenses",
+      "department": "G&A",
+      "period": "2026-09",
+      "amount": 850000
+    },
+    {
+      "id": 6,
+      "account": "6100",
+      "accountType": "Operating_Expenses",
+      "department": "Sales",
+      "period": "2026-09",
+      "amount": 620000
+    },
+    {
+      "id": 7,
+      "account": "6200",
+      "accountType": "Operating_Expenses",
+      "department": "Engineering",
+      "period": "2026-09",
+      "amount": 980000
+    },
+    {
+      "id": 8,
+      "account": "2000",
+      "accountType": "Accounts_Payable",
+      "department": "Corporate",
+      "period": "2026-09",
+      "amount": 680000
+    },
+    {
+      "id": 9,
+      "account": "2500",
+      "accountType": "Long_Term_Debt",
+      "department": "Corporate",
+      "period": "2026-09",
+      "amount": 8500000
+    },
+    {
+      "id": 10,
+      "account": "3000",
+      "accountType": "Retained_Earnings",
+      "department": "Corporate",
+      "period": "2026-09",
+      "amount": 5200000
+    }
+  ]
+}
