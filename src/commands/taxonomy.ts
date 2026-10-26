@@ -1,22 +1,26 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { TaxonomyService } from '../services/TaxonomyService';
+import { ApiClient } from '../client/ApiClient';
 import { FileService } from '../services/FileService';
 import { Taxonomy, TaxonomyEntity } from '../models/Taxonomy';
+import * as path from 'path';
 
+const getApiClient = (apiUrl?: string) => new ApiClient(apiUrl);
 const fileService = new FileService();
-const taxonomyService = new TaxonomyService(fileService);
 
 export const taxonomyCommand = new Command('taxonomy')
   .alias('tax')
-  .description('Manage taxonomies');
+  .description('Manage taxonomies')
+  .option('--api-url <url>', 'API base URL', 'http://localhost:3000/api');
 
 taxonomyCommand
   .command('list')
   .description('List all taxonomies')
-  .action(() => {
+  .action(async (options, command) => {
     try {
-      const taxonomies = taxonomyService.list();
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+      const taxonomies = await client.listTaxonomies();
       
       if (taxonomies.length === 0) {
         console.log(chalk.yellow('No taxonomies found'));
@@ -30,7 +34,7 @@ taxonomyCommand
       });
       console.log('');
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
@@ -39,9 +43,11 @@ taxonomyCommand
   .command('get <id>')
   .description('Get a taxonomy by id')
   .option('-e, --entities', 'Show entities')
-  .action((id: string, options) => {
+  .action(async (id: string, options, command) => {
     try {
-      const taxonomy = taxonomyService.get(id);
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+      const taxonomy = await client.getTaxonomy(id);
       
       console.log(chalk.bold(`\nTaxonomy: ${taxonomy.name}\n`));
       console.log(chalk.gray(`ID: ${taxonomy.id}`));
@@ -67,6 +73,48 @@ taxonomyCommand
       }
       console.log('');
     } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });
+
+taxonomyCommand
+  .command('import')
+  .description('Import taxonomies from file')
+  .option('-f, --file <path>', 'Path to taxonomy JSON file')
+  .option('-d, --dir <path>', 'Directory containing taxonomy files', 'input/taxonomies')
+  .action(async (options, command) => {
+    try {
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      let files: string[] = [];
+      if (options.file) {
+        files = [path.resolve(options.file)];
+      } else {
+        const dir = path.resolve(options.dir);
+        files = fileService.listFiles(dir);
+      }
+
+      console.log(chalk.bold(`\nImporting taxonomies from ${files.length} file(s)...\n`));
+
+      let imported = 0;
+      let errors = 0;
+
+      for (const file of files) {
+        try {
+          const taxonomy = fileService.readJSON<Taxonomy>(file);
+          await client.createTaxonomy(taxonomy);
+          console.log(chalk.green(`✓ Imported taxonomy: ${taxonomy.id}`));
+          imported++;
+        } catch (error: any) {
+          console.log(chalk.red(`✗ Failed to import ${path.basename(file)}: ${error.response?.data?.error || error.message}`));
+          errors++;
+        }
+      }
+
+      console.log(chalk.bold(`\nImport complete: ${imported} succeeded, ${errors} failed\n`));
+    } catch (error: any) {
       console.error(chalk.red('Error:'), error.message);
       process.exit(1);
     }
@@ -80,8 +128,11 @@ taxonomyCommand
   .requiredOption('-d, --description <description>', 'Taxonomy description')
   .option('-h, --hierarchical', 'Is hierarchical', false)
   .option('-c, --classifications <classifications>', 'Comma-separated classifications', 'CIQ')
-  .action((options) => {
+  .action(async (options, command) => {
     try {
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
       const taxonomy: Taxonomy = {
         id: options.id,
         name: options.name,
@@ -95,10 +146,10 @@ taxonomyCommand
         entities: []
       };
 
-      taxonomyService.create(taxonomy);
+      await client.createTaxonomy(taxonomy);
       console.log(chalk.green(`✓ Taxonomy '${taxonomy.id}' created successfully`));
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
@@ -109,18 +160,20 @@ taxonomyCommand
   .option('-n, --name <name>', 'Taxonomy name')
   .option('-d, --description <description>', 'Taxonomy description')
   .option('-p, --publish', 'Publish taxonomy')
-  .action((id: string, options) => {
+  .action(async (id: string, options, command) => {
     try {
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
       const updates: Partial<Taxonomy> = {};
-      
       if (options.name) updates.name = options.name;
       if (options.description) updates.description = options.description;
       if (options.publish !== undefined) updates.isPublished = true;
 
-      const updated = taxonomyService.update(id, updates);
+      const updated = await client.updateTaxonomy(id, updates);
       console.log(chalk.green(`✓ Taxonomy '${updated.id}' updated successfully`));
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
@@ -128,12 +181,15 @@ taxonomyCommand
 taxonomyCommand
   .command('delete <id>')
   .description('Delete a taxonomy')
-  .action((id: string) => {
+  .action(async (id: string, options, command) => {
     try {
-      taxonomyService.delete(id);
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      await client.deleteTaxonomy(id);
       console.log(chalk.green(`✓ Taxonomy '${id}' deleted successfully`));
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
@@ -147,9 +203,12 @@ taxonomyCommand
   .option('-d, --description <description>', 'Description', '')
   .option('-p, --parent <parent>', 'Parent entity ID')
   .option('-c, --classifications <classifications>', 'Comma-separated classifications')
-  .action((taxonomyId: string, options) => {
+  .action(async (taxonomyId: string, options, command) => {
     try {
-      const taxonomy = taxonomyService.get(taxonomyId);
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      const taxonomy = await client.getTaxonomy(taxonomyId);
       
       const entity: TaxonomyEntity = {
         id: options.id,
@@ -165,10 +224,10 @@ taxonomyCommand
         isRoot: !options.parent
       };
 
-      taxonomyService.addEntity(taxonomyId, entity);
+      await client.addTaxonomyEntity(taxonomyId, entity);
       console.log(chalk.green(`✓ Entity '${entity.id}' added to taxonomy '${taxonomyId}'`));
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
@@ -176,12 +235,15 @@ taxonomyCommand
 taxonomyCommand
   .command('delete-entity <taxonomyId> <entityId>')
   .description('Delete an entity from a taxonomy')
-  .action((taxonomyId: string, entityId: string) => {
+  .action(async (taxonomyId: string, entityId: string, options, command) => {
     try {
-      taxonomyService.deleteEntity(taxonomyId, entityId);
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      await client.deleteTaxonomyEntity(taxonomyId, entityId);
       console.log(chalk.green(`✓ Entity '${entityId}' deleted from taxonomy '${taxonomyId}'`));
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });

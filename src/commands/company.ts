@@ -1,24 +1,28 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { CompanyService } from '../services/CompanyService';
+import { ApiClient } from '../client/ApiClient';
 import { FileService } from '../services/FileService';
 import { Company } from '../models/Company';
+import * as path from 'path';
 
+const getApiClient = (apiUrl?: string) => new ApiClient(apiUrl);
 const fileService = new FileService();
-const companyService = new CompanyService(fileService);
 
 export const companyCommand = new Command('company')
   .alias('co')
-  .description('Manage companies');
+  .description('Manage companies')
+  .option('--api-url <url>', 'API base URL', 'http://localhost:3000/api');
 
 companyCommand
   .command('list')
   .description('List all companies')
   .option('-t, --type <type>', 'Filter by type (lender or borrower)')
-  .action((options) => {
+  .action(async (options, command) => {
     try {
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
       const type = options.type as 'lender' | 'borrower' | undefined;
-      const companies = companyService.list(type);
+      const companies = await client.listCompanies(type);
       
       if (companies.length === 0) {
         console.log(chalk.yellow('No companies found'));
@@ -48,7 +52,7 @@ companyCommand
         console.log('');
       }
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
@@ -56,9 +60,11 @@ companyCommand
 companyCommand
   .command('get <id>')
   .description('Get a company by id')
-  .action((id: string) => {
+  .action(async (id: string, options, command) => {
     try {
-      const company = companyService.get(id);
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+      const company = await client.getCompany(id);
       
       console.log(chalk.bold(`\nCompany: ${company.name}\n`));
       console.log(chalk.gray(`ID: ${company.id}`));
@@ -71,6 +77,41 @@ companyCommand
         console.log(chalk.gray(`  ${key}: ${JSON.stringify(value)}`));
       });
       console.log('');
+    } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });
+
+companyCommand
+  .command('import')
+  .description('Import companies from file')
+  .option('-f, --file <path>', 'Path to companies JSON file', 'input/companies/companies.json')
+  .action(async (options, command) => {
+    try {
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      const file = path.resolve(options.file);
+      const companies = fileService.readJSON<Company[]>(file);
+
+      console.log(chalk.bold(`\nImporting ${companies.length} companies from ${path.basename(file)}...\n`));
+
+      let imported = 0;
+      let errors = 0;
+
+      for (const company of companies) {
+        try {
+          await client.createCompany(company);
+          console.log(chalk.green(`✓ Imported company: ${company.id} (${company.name})`));
+          imported++;
+        } catch (error: any) {
+          console.log(chalk.red(`✗ Failed to import ${company.id}: ${error.response?.data?.error || error.message}`));
+          errors++;
+        }
+      }
+
+      console.log(chalk.bold(`\nImport complete: ${imported} succeeded, ${errors} failed\n`));
     } catch (error: any) {
       console.error(chalk.red('Error:'), error.message);
       process.exit(1);
@@ -85,8 +126,11 @@ companyCommand
   .requiredOption('-t, --type <type>', 'Company type (lender or borrower)')
   .requiredOption('-d, --description <description>', 'Company description')
   .requiredOption('--industry <industry>', 'Industry')
-  .action((options) => {
+  .action(async (options, command) => {
     try {
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
       if (options.type !== 'lender' && options.type !== 'borrower') {
         throw new Error('Type must be either "lender" or "borrower"');
       }
@@ -102,10 +146,10 @@ companyCommand
         metadata: {}
       };
 
-      companyService.create(company);
+      await client.createCompany(company);
       console.log(chalk.green(`✓ Company '${company.id}' created successfully`));
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
@@ -116,18 +160,20 @@ companyCommand
   .option('-n, --name <name>', 'Company name')
   .option('-d, --description <description>', 'Company description')
   .option('--industry <industry>', 'Industry')
-  .action((id: string, options) => {
+  .action(async (id: string, options, command) => {
     try {
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
       const updates: Partial<Company> = {};
-      
       if (options.name) updates.name = options.name;
       if (options.description) updates.description = options.description;
       if (options.industry) updates.industry = options.industry;
 
-      const updated = companyService.update(id, updates);
+      const updated = await client.updateCompany(id, updates);
       console.log(chalk.green(`✓ Company '${updated.id}' updated successfully`));
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
@@ -135,12 +181,15 @@ companyCommand
 companyCommand
   .command('delete <id>')
   .description('Delete a company')
-  .action((id: string) => {
+  .action(async (id: string, options, command) => {
     try {
-      companyService.delete(id);
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      await client.deleteCompany(id);
       console.log(chalk.green(`✓ Company '${id}' deleted successfully`));
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });

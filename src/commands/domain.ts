@@ -1,22 +1,26 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { DomainService } from '../services/DomainService';
+import { ApiClient } from '../client/ApiClient';
 import { FileService } from '../services/FileService';
 import { Domain } from '../models/Domain';
+import * as path from 'path';
 
+const getApiClient = (apiUrl?: string) => new ApiClient(apiUrl);
 const fileService = new FileService();
-const domainService = new DomainService(fileService);
 
 export const domainCommand = new Command('domain')
   .alias('dom')
-  .description('Manage domains');
+  .description('Manage domains')
+  .option('--api-url <url>', 'API base URL', 'http://localhost:3000/api');
 
 domainCommand
   .command('list')
   .description('List all domains')
-  .action(() => {
+  .action(async (options, command) => {
     try {
-      const domains = domainService.list();
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+      const domains = await client.listDomains();
       
       if (domains.length === 0) {
         console.log(chalk.yellow('No domains found'));
@@ -30,7 +34,7 @@ domainCommand
       });
       console.log('');
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
@@ -39,9 +43,11 @@ domainCommand
   .command('get <id>')
   .description('Get a domain by id')
   .option('-s, --schema', 'Show data schema')
-  .action((id: string, options) => {
+  .action(async (id: string, options, command) => {
     try {
-      const domain = domainService.get(id);
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+      const domain = await client.getDomain(id);
       
       console.log(chalk.bold(`\nDomain: ${domain.name}\n`));
       console.log(chalk.gray(`ID: ${domain.id}`));
@@ -67,6 +73,48 @@ domainCommand
       }
       console.log('');
     } catch (error: any) {
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
+      process.exit(1);
+    }
+  });
+
+domainCommand
+  .command('import')
+  .description('Import domains from file')
+  .option('-f, --file <path>', 'Path to domain JSON file')
+  .option('-d, --dir <path>', 'Directory containing domain files', 'input/domains')
+  .action(async (options, command) => {
+    try {
+      const apiUrl = command.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      let files: string[] = [];
+      if (options.file) {
+        files = [path.resolve(options.file)];
+      } else {
+        const dir = path.resolve(options.dir);
+        files = fileService.listFiles(dir);
+      }
+
+      console.log(chalk.bold(`\nImporting domains from ${files.length} file(s)...\n`));
+
+      let imported = 0;
+      let errors = 0;
+
+      for (const file of files) {
+        try {
+          const domain = fileService.readJSON<Domain>(file);
+          await client.createDomain(domain);
+          console.log(chalk.green(`✓ Imported domain: ${domain.id}`));
+          imported++;
+        } catch (error: any) {
+          console.log(chalk.red(`✗ Failed to import ${path.basename(file)}: ${error.response?.data?.error || error.message}`));
+          errors++;
+        }
+      }
+
+      console.log(chalk.bold(`\nImport complete: ${imported} succeeded, ${errors} failed\n`));
+    } catch (error: any) {
       console.error(chalk.red('Error:'), error.message);
       process.exit(1);
     }
@@ -75,12 +123,15 @@ domainCommand
 domainCommand
   .command('delete <id>')
   .description('Delete a domain')
-  .action((id: string) => {
+  .action(async (id: string, options, command) => {
     try {
-      domainService.delete(id);
+      const apiUrl = command.parent.parent.opts().apiUrl;
+      const client = getApiClient(apiUrl);
+
+      await client.deleteDomain(id);
       console.log(chalk.green(`✓ Domain '${id}' deleted successfully`));
     } catch (error: any) {
-      console.error(chalk.red('Error:'), error.message);
+      console.error(chalk.red('Error:'), error.response?.data?.error || error.message);
       process.exit(1);
     }
   });
