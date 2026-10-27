@@ -1,0 +1,60 @@
+{
+  "companyId": "BORR001",
+  "companyName": "TechVenture Solutions",
+  "domainId": "LoanPayment",
+  "domainName": "Loan Payment",
+  "instanceId": "BORR001_LP_001",
+  "classifications": ["CIQ"],
+  "createdAt": "2026-10-26T10:00:00Z",
+  "modifiedAt": "2026-10-26T10:00:00Z",
+  "data": [
+    {
+      "loanId": "LOAN-001",
+      "loanType": "Senior",
+      "dueDate": "2026-09-15",
+      "paidDate": "2026-09-14",
+      "period": "2026-09",
+      "status": "Paid",
+      "interestRate": 0.065,
+      "interestDue": 45000,
+      "interestPaid": 45000,
+      "principalDue": 85000,
+      "principalPaid": 85000,
+      "totalDue": 130000,
+      "totalPaid": 130000,
+      "endingBalance": 8500000
+    },
+    {
+      "loanId": "LOAN-002",
+      "loanType": "Revolver",
+      "dueDate": "2026-09-30",
+      "paidDate": "2026-09-30",
+      "period": "2026-09",
+      "status": "Paid",
+      "interestRate": 0.055,
+      "interestDue": 12000,
+      "interestPaid": 12000,
+      "principalDue": 0,
+      "principalPaid": 0,
+      "totalDue": 12000,
+      "totalPaid": 12000,
+      "endingBalance": 2500000
+    },
+    {
+      "loanId": "LOAN-001",
+      "loanType": "Senior",
+      "dueDate": "2026-10-15",
+      "paidDate": null,
+      "period": "2026-10",
+      "status": "Due",
+      "interestRate": 0.065,
+      "interestDue": 46000,
+      "interestPaid": 0,
+      "principalDue": 85000,
+      "principalPaid": 0,
+      "totalDue": 131000,
+      "totalPaid": 0,
+      "endingBalance": 8415000
+    }
+  ]
+}

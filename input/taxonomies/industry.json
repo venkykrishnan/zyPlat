@@ -1,0 +1,90 @@
+{
+  "id": "industry",
+  "name": "Industry",
+  "description": "Hierarchical taxonomy for industry classification",
+  "isHierarchical": true,
+  "classifications": ["NAICS", "GICS"],
+  "version": "1.0.0",
+  "isPublished": true,
+  "createdAt": "2026-10-26T10:00:00Z",
+  "modifiedAt": "2026-10-26T10:00:00Z",
+  "entities": [
+    {
+      "id": "Financial_Services",
+      "value": "Financial Services",
+      "description": "Companies providing financial services",
+      "displayName": "Financial Services",
+      "classifications": ["GICS", "NAICS"],
+      "aliases": ["Finance"],
+      "keywords": ["finance", "banking"],
+      "parent": null,
+      "isRoot": true
+    },
+    {
+      "id": "Banking",
+      "value": "Banking",
+      "description": "Commercial and retail banking",
+      "displayName": "Banking",
+      "classifications": ["GICS", "NAICS"],
+      "aliases": ["Banks"],
+      "keywords": ["bank", "lending"],
+      "parent": "Financial_Services",
+      "isRoot": false
+    },
+    {
+      "id": "Commercial_Lending",
+      "value": "Commercial Lending",
+      "description": "Lending to businesses",
+      "displayName": "Commercial Lending",
+      "classifications": ["GICS"],
+      "aliases": ["Business Lending"],
+      "keywords": ["commercial", "business loans"],
+      "parent": "Banking",
+      "isRoot": false
+    },
+    {
+      "id": "Technology",
+      "value": "Technology",
+      "description": "Technology companies and services",
+      "displayName": "Technology",
+      "classifications": ["GICS", "NAICS"],
+      "aliases": ["Tech", "IT"],
+      "keywords": ["software", "hardware", "digital"],
+      "parent": null,
+      "isRoot": true
+    },
+    {
+      "id": "Software",
+      "value": "Software",
+      "description": "Software development and services",
+      "displayName": "Software",
+      "classifications": ["GICS", "NAICS"],
+      "aliases": ["SaaS"],
+      "keywords": ["application", "platform"],
+      "parent": "Technology",
+      "isRoot": false
+    },
+    {
+      "id": "Healthcare",
+      "value": "Healthcare",
+      "description": "Healthcare and medical services",
+      "displayName": "Healthcare",
+      "classifications": ["GICS", "NAICS"],
+      "aliases": ["Health", "Medical"],
+      "keywords": ["medical", "health"],
+      "parent": null,
+      "isRoot": true
+    },
+    {
+      "id": "Manufacturing",
+      "value": "Manufacturing",
+      "description": "Manufacturing and production",
+      "displayName": "Manufacturing",
+      "classifications": ["GICS", "NAICS"],
+      "aliases": ["Production"],
+      "keywords": ["factory", "production", "goods"],
+      "parent": null,
+      "isRoot": true
+    }
+  ]
+}
