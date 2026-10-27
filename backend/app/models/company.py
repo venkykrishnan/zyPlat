@@ -28,7 +28,7 @@ class Company(Base):
     naics_code = Column(String, nullable=True)
     state = Column(String, nullable=True)
     report_info = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
-    metadata = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    metadata_ = Column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 

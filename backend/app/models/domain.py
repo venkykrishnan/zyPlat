@@ -137,7 +137,7 @@ class DomainInstance(Base):
     domain_definition_id = Column(UUID(as_uuid=True), ForeignKey("domain_definitions.id", ondelete="CASCADE"), nullable=False)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
     active_classifications = Column(ARRAY(String), nullable=False, server_default=text("'{}'::text[]"))
-    metadata = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    metadata_ = Column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
