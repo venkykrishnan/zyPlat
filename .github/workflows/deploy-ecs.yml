@@ -1,0 +1,189 @@
+name: Deploy to AWS ECS Fargate
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual triggers
+
+# Prevent concurrent deployments
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  # Reuse the code-quality job from ci.yml
+  code-quality:
+    name: Code Quality Gate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+          pip install -r cli/requirements-dev.txt
+      
+      - name: Run Black
+        run: black --check backend/ cli/
+      
+      - name: Run Ruff
+        run: ruff check backend/ cli/
+      
+      - name: Run mypy
+        run: mypy backend/app/ cli/zyplat_cli/
+      
+      - name: Quality gate passed
+        run: echo "✅ Code quality checks passed - proceeding to deployment"
+
+  test:
+    name: Test Gate
+    runs-on: ubuntu-latest
+    needs: code-quality
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: zyplat
+          POSTGRES_PASSWORD: zyplat
+          POSTGRES_DB: zyplat_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+      
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://zyplat:zyplat@localhost:5432/zyplat_test
+        run: |
+          cd backend && alembic upgrade head
+          pytest tests/ -v
+      
+      - name: Test gate passed
+        run: echo "✅ Tests passed - proceeding to deployment"
+
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [code-quality, test]
+    
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/zyplat-backend
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-ecs:
+    name: Deploy to ECS Fargate
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: production
+      url: https://api.zyplat.com  # Your production URL
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition zyplat-backend \
+            --query taskDefinition > task-definition.json
+      
+      - name: Fill in new image ID in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: zyplat-backend
+          image: ${{ needs.build-and-push.outputs.image-tag }}
+      
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          pip install -r backend/requirements.txt
+          cd backend
+          alembic upgrade head
+      
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: zyplat-backend-service
+          cluster: zyplat-cluster
+          wait-for-service-stability: true
+      
+      - name: Deployment complete
+        run: |
+          echo "✅ Deployment to ECS Fargate complete"
+          echo "Service: zyplat-backend-service"
+          echo "Cluster: zyplat-cluster"

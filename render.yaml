@@ -1,0 +1,57 @@
+# Render Blueprint for zyPlat
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  # FastAPI Backend Service
+  - type: web
+    name: zyplat-backend
+    runtime: python
+    plan: starter  # Change to 'standard' or 'pro' as needed
+    region: oregon  # Change to your preferred region
+    buildCommand: |
+      # Install dependencies
+      pip install --upgrade pip
+      pip install -r backend/requirements.txt
+      pip install -r backend/requirements-dev.txt
+      
+      # Run code quality checks (GATE - will fail deployment if checks fail)
+      echo "Running code quality checks..."
+      black --check backend/ cli/ || exit 1
+      ruff check backend/ cli/ || exit 1
+      mypy backend/app/ cli/zyplat_cli/ || exit 1
+      
+      echo "✅ All quality checks passed"
+      
+      # Run database migrations
+      cd backend
+      alembic upgrade head
+    
+    startCommand: |
+      cd backend
+      uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: zyplat-db
+          property: connectionString
+      
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      
+      - key: PORT
+        value: 8000
+    
+    healthCheckPath: /health
+    
+    autoDeploy: true  # Auto-deploy on push to main
+    
+    # Only deploy from main branch
+    branch: main
+
+databases:
+  - name: zyplat-db
+    databaseName: zyplat
+    plan: starter  # Change to 'standard' or 'pro' as needed
+    region: oregon
+    ipAllowList: []  # Empty = allow all, or specify IPs
