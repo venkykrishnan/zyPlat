@@ -1,4 +1,4 @@
-.PHONY: help db-up db-down db-migrate db-downgrade db-verify
+.PHONY: help db-up db-down db-migrate db-downgrade db-verify format lint type-check check fix test test-cov
 
 DB_CONTAINER ?= zyplat-postgres
 DB_PORT ?= 5432
@@ -13,11 +13,24 @@ ALEMBIC ?= alembic -c db/alembic.ini
 
 help:
 	@echo "Available targets:"
+	@echo ""
+	@echo "Database:"
 	@echo "  make db-up         # Start local Postgres container (or start existing one)"
 	@echo "  make db-down       # Stop local Postgres container"
 	@echo "  make db-migrate    # Run Alembic upgrade head"
 	@echo "  make db-downgrade  # Run Alembic downgrade -1"
 	@echo "  make db-verify     # Run schema verification SQL checks"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make format        # Format code with black"
+	@echo "  make lint          # Run ruff linter"
+	@echo "  make type-check    # Run mypy type checker"
+	@echo "  make check         # Run all code quality checks"
+	@echo "  make fix           # Auto-fix linting issues"
+	@echo ""
+	@echo "Testing:"
+	@echo "  make test          # Run all tests"
+	@echo "  make test-cov      # Run tests with coverage report"
 	@echo ""
 	@echo "Configurable variables:"
 	@echo "  DB_CONTAINER=$(DB_CONTAINER)"
@@ -70,3 +83,48 @@ db-downgrade:
 db-verify:
 	@command -v psql >/dev/null 2>&1 || { echo "psql is required"; exit 1; }
 	@psql "$(PSQL_URL)" -v ON_ERROR_STOP=1 -f scripts/db/verify_schema.sql
+
+##@ Code Quality
+
+.PHONY: format
+format:
+	@echo "Formatting code with black..."
+	@black backend/ cli/
+	@echo "✓ Code formatted"
+
+.PHONY: lint
+lint:
+	@echo "Running ruff linter..."
+	@ruff check backend/ cli/
+	@echo "✓ Linting complete"
+
+.PHONY: type-check
+type-check:
+	@echo "Running mypy type checker..."
+	@mypy backend/app/ cli/zyplat_cli/
+	@echo "✓ Type checking complete"
+
+.PHONY: check
+check: format lint type-check
+	@echo "✓ All code quality checks passed"
+
+.PHONY: fix
+fix:
+	@echo "Auto-fixing linting issues..."
+	@ruff check --fix backend/ cli/
+	@black backend/ cli/
+	@echo "✓ Auto-fix complete"
+
+##@ Testing
+
+.PHONY: test
+test:
+	@echo "Running tests..."
+	@pytest tests/ -v
+	@echo "✓ Tests complete"
+
+.PHONY: test-cov
+test-cov:
+	@echo "Running tests with coverage..."
+	@pytest tests/ -v --cov=backend/app --cov=cli/zyplat_cli --cov-report=html --cov-report=term
+	@echo "✓ Coverage report generated in htmlcov/"

@@ -249,13 +249,62 @@ cd cli
 pytest
 ```
 
+## Development
+
+### Code Quality Standards
+
+This project uses automated code quality tools configured in `pyproject.toml`:
+
+- **black** - Code formatter (line length: 100)
+- **ruff** - Fast Python linter
+- **mypy** - Static type checker
+- **pytest** - Test framework
+
+**Install development dependencies:**
+
+```bash
+# Backend
+pip install -r backend/requirements-dev.txt
+
+# CLI
+pip install -r cli/requirements-dev.txt
+```
+
+**Run code quality checks:**
+
+```bash
+make format      # Format code with black
+make lint        # Run ruff linter
+make type-check  # Run mypy type checker
+make check       # Run all checks
+make fix         # Auto-fix linting issues
+```
+
+**Run tests:**
+
+```bash
+make test        # Run all tests
+make test-cov    # Run with coverage report
+```
+
+### Coding Conventions
+
+See `AGENTS.md` for comprehensive Python coding style guidelines including:
+- Naming conventions (snake_case, PascalCase)
+- Import ordering
+- Type hints requirements
+- Docstring format (Google-style)
+- FastAPI-specific conventions
+- SQLAlchemy best practices
+- Error handling patterns
+
 ## Architecture Documentation
 
 Full architecture and schema documentation is available in:
 - `docs/plans/taxonomy-domain-service.plan.md` - Architecture plan
 - `docs/plans/taxonomy-domain-v1-schema.md` - Complete schema specification
 - `docs/plans/alembic-execution-plan.md` - Database migration plan
-- `AGENTS.md` - Coding conventions
+- `AGENTS.md` - Coding conventions and style guide
 
 ## Project Structure
 
