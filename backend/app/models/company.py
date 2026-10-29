@@ -1,5 +1,16 @@
 import enum
-from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey, Integer, CheckConstraint, Index, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    String,
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    CheckConstraint,
+    Index,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func, text
 from sqlalchemy.orm import relationship
@@ -30,12 +41,16 @@ class Company(Base):
     report_info = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     metadata_ = Column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
     __table_args__ = (
         CheckConstraint("length(trim(company_id)) > 0", name="ck_companies_company_id_not_empty"),
         CheckConstraint("length(trim(name)) > 0", name="ck_companies_name_not_empty"),
-        CheckConstraint("jsonb_typeof(report_info) = 'array'", name="ck_companies_report_info_array"),
+        CheckConstraint(
+            "jsonb_typeof(report_info) = 'array'", name="ck_companies_report_info_array"
+        ),
         CheckConstraint("jsonb_typeof(metadata) = 'object'", name="ck_companies_metadata_object"),
         Index("ix_companies_customer_id", "customer_id"),
         Index("ix_companies_is_enabled", "is_enabled"),
@@ -45,7 +60,9 @@ class Company(Base):
         Index("ix_companies_company_type", "company_type"),
     )
 
-    snapshots = relationship("CompanySnapshot", back_populates="company", cascade="all, delete-orphan")
+    snapshots = relationship(
+        "CompanySnapshot", back_populates="company", cascade="all, delete-orphan"
+    )
 
 
 class PeriodGranularity(str, enum.Enum):
@@ -59,15 +76,21 @@ class CompanySnapshot(Base):
     __tablename__ = "company_snapshots"
 
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
+    company_id = Column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
     period_type = Column(Enum(PeriodGranularity, name="period_granularity"), nullable=False)
     period_value = Column(String, nullable=False)
     ord = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
     __table_args__ = (
-        UniqueConstraint("company_id", "period_type", "period_value", "ord", name="uq_company_snapshot_tuple"),
+        UniqueConstraint(
+            "company_id", "period_type", "period_value", "ord", name="uq_company_snapshot_tuple"
+        ),
         CheckConstraint("ord > 0", name="ck_company_snapshot_ord_positive"),
         CheckConstraint(
             """
@@ -78,7 +101,9 @@ class CompanySnapshot(Base):
             """,
             name="ck_company_snapshot_period_format",
         ),
-        Index("ix_company_snapshot_default_lookup", "company_id", "period_type", "period_value", "ord"),
+        Index(
+            "ix_company_snapshot_default_lookup", "company_id", "period_type", "period_value", "ord"
+        ),
     )
 
     company = relationship("Company", back_populates="snapshots")
@@ -87,7 +112,11 @@ class CompanySnapshot(Base):
 class CompanySnapshotHead(Base):
     __tablename__ = "company_snapshot_heads"
 
-    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True)
+    company_id = Column(
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True
+    )
     period_type = Column(Enum(PeriodGranularity, name="period_granularity"), primary_key=True)
     period_value = Column(String, primary_key=True)
-    snapshot_id = Column(UUID(as_uuid=True), ForeignKey("company_snapshots.id", ondelete="CASCADE"), nullable=False)
+    snapshot_id = Column(
+        UUID(as_uuid=True), ForeignKey("company_snapshots.id", ondelete="CASCADE"), nullable=False
+    )

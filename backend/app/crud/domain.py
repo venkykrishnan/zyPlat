@@ -28,11 +28,11 @@ def update_domain_definition(
     db_domain = get_domain_definition(db, domain_id)
     if not db_domain:
         return None
-    
+
     update_data = domain_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_domain, field, value)
-    
+
     db.commit()
     db.refresh(db_domain)
     return db_domain
@@ -42,7 +42,7 @@ def delete_domain_definition(db: Session, domain_id: UUID) -> bool:
     db_domain = get_domain_definition(db, domain_id)
     if not db_domain:
         return False
-    
+
     db.delete(db_domain)
     db.commit()
     return True

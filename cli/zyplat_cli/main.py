@@ -35,25 +35,36 @@ def company():
 @click.option("--file", "-f", type=click.Path(exists=True), help="JSON file with company data")
 @click.option("--company-id", help="Company ID")
 @click.option("--name", help="Company name")
-@click.option("--type", "company_type", type=click.Choice(["LENDER", "BORROWER", "PARTICIPANT"]), help="Company type")
+@click.option(
+    "--type",
+    "company_type",
+    type=click.Choice(["LENDER", "BORROWER", "PARTICIPANT"]),
+    help="Company type",
+)
 @click.pass_context
-def company_create(ctx, file: Optional[str], company_id: Optional[str], name: Optional[str], company_type: Optional[str]):
+def company_create(
+    ctx,
+    file: Optional[str],
+    company_id: Optional[str],
+    name: Optional[str],
+    company_type: Optional[str],
+):
     """Create a new company"""
     client = ctx.obj["client"]
-    
+
     if file:
-        with open(file, 'r') as f:
+        with open(file, "r") as f:
             data = json.load(f)
     elif company_id and name and company_type:
         data = {
             "company_id": company_id,
             "name": name,
             "company_type": company_type,
-            "description": ""
+            "description": "",
         }
     else:
         raise click.UsageError("Either --file or (--company-id, --name, --type) must be provided")
-    
+
     try:
         result = client.create_company(data)
         console.print(f"[green]✓[/green] Created company: {result['name']} (ID: {result['id']})")
@@ -68,24 +79,24 @@ def company_create(ctx, file: Optional[str], company_id: Optional[str], name: Op
 def company_list(ctx):
     """List all companies"""
     client = ctx.obj["client"]
-    
+
     try:
         companies = client.list_companies()
-        
+
         table = Table(title="Companies")
         table.add_column("ID", style="cyan")
         table.add_column("Company ID", style="magenta")
         table.add_column("Name", style="green")
         table.add_column("Type", style="yellow")
-        
+
         for company in companies:
             table.add_row(
                 str(company["id"])[:8],
                 company["company_id"],
                 company["name"],
-                company["company_type"]
+                company["company_type"],
             )
-        
+
         console.print(table)
     except Exception as e:
         console.print(f"[red]✗[/red] Error: {e}")
@@ -100,12 +111,14 @@ def taxonomy():
 
 @taxonomy.command("create")
 @click.option("--file", "-f", type=click.Path(exists=True), help="JSON file with taxonomy data")
-@click.option("--dir", "-d", type=click.Path(exists=True), help="Directory containing taxonomy files")
+@click.option(
+    "--dir", "-d", type=click.Path(exists=True), help="Directory containing taxonomy files"
+)
 @click.pass_context
 def taxonomy_create(ctx, file: Optional[str], dir: Optional[str]):
     """Create taxonomy definition(s) from file or directory"""
     client = ctx.obj["client"]
-    
+
     files = []
     if file:
         files = [file]
@@ -114,12 +127,12 @@ def taxonomy_create(ctx, file: Optional[str], dir: Optional[str]):
     else:
         # Default to input/taxonomies
         files = list(DEFAULT_INPUT_DIR.glob("taxonomies/*.json"))
-    
+
     for filepath in files:
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 data = json.load(f)
-            
+
             # Transform legacy format to new schema
             taxonomy_data = {
                 "taxonomy_id": data.get("id", Path(filepath).stem),
@@ -130,12 +143,14 @@ def taxonomy_create(ctx, file: Optional[str], dir: Optional[str]):
                 "is_hierarchical": data.get("isHierarchical", False),
                 "allowed_classifications": data.get("classifications", []),
                 "is_published": True,
-                "is_default": True
+                "is_default": True,
             }
-            
+
             result = client.create_taxonomy_definition(taxonomy_data)
-            console.print(f"[green]✓[/green] Created taxonomy: {result['taxonomy_id']} (ID: {result['id']})")
-            
+            console.print(
+                f"[green]✓[/green] Created taxonomy: {result['taxonomy_id']} (ID: {result['id']})"
+            )
+
             # Create entities if present
             if "entities" in data:
                 taxonomy_def_id = result["id"]
@@ -148,11 +163,11 @@ def taxonomy_create(ctx, file: Optional[str], dir: Optional[str]):
                         "description": entity.get("description", ""),
                         "explicit_classifications": entity.get("classifications", []),
                         "is_base_entity": entity.get("isBase", True),
-                        "parent_entity_id": None  # Simplified for now
+                        "parent_entity_id": None,  # Simplified for now
                     }
                     client.create_taxonomy_entity(entity_data)
                 console.print(f"  Created {len(data['entities'])} entities")
-                
+
         except Exception as e:
             console.print(f"[red]✗[/red] Error processing {filepath}: {e}")
 
@@ -162,26 +177,26 @@ def taxonomy_create(ctx, file: Optional[str], dir: Optional[str]):
 def taxonomy_list(ctx):
     """List all taxonomy definitions"""
     client = ctx.obj["client"]
-    
+
     try:
         taxonomies = client.list_taxonomy_definitions()
-        
+
         table = Table(title="Taxonomy Definitions")
         table.add_column("ID", style="cyan")
         table.add_column("Taxonomy ID", style="magenta")
         table.add_column("Version", style="yellow")
         table.add_column("Scope", style="green")
         table.add_column("Hierarchical", style="blue")
-        
+
         for taxonomy in taxonomies:
             table.add_row(
                 str(taxonomy["id"])[:8],
                 taxonomy["taxonomy_id"],
                 taxonomy["version"],
                 taxonomy["scope_type"],
-                "Yes" if taxonomy["is_hierarchical"] else "No"
+                "Yes" if taxonomy["is_hierarchical"] else "No",
             )
-        
+
         console.print(table)
     except Exception as e:
         console.print(f"[red]✗[/red] Error: {e}")
@@ -201,7 +216,7 @@ def domain():
 def domain_create(ctx, file: Optional[str], dir: Optional[str]):
     """Create domain definition(s) from file or directory"""
     client = ctx.obj["client"]
-    
+
     files = []
     if file:
         files = [file]
@@ -210,24 +225,26 @@ def domain_create(ctx, file: Optional[str], dir: Optional[str]):
     else:
         # Default to input/domains
         files = list(DEFAULT_INPUT_DIR.glob("domains/*.json"))
-    
+
     for filepath in files:
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 data = json.load(f)
-            
+
             # Transform legacy format to new schema
             domain_data = {
                 "domain_id": data.get("id", Path(filepath).stem),
                 "description": data.get("description", ""),
                 "kind": "TIME_SERIES" if data.get("isTimeSeries", False) else "SCALAR",
                 "scope_type": "GLOBAL",
-                "owner_company_id": None
+                "owner_company_id": None,
             }
-            
+
             result = client.create_domain_definition(domain_data)
-            console.print(f"[green]✓[/green] Created domain: {result['domain_id']} (ID: {result['id']})")
-            
+            console.print(
+                f"[green]✓[/green] Created domain: {result['domain_id']} (ID: {result['id']})"
+            )
+
         except Exception as e:
             console.print(f"[red]✗[/red] Error processing {filepath}: {e}")
 
@@ -237,24 +254,21 @@ def domain_create(ctx, file: Optional[str], dir: Optional[str]):
 def domain_list(ctx):
     """List all domain definitions"""
     client = ctx.obj["client"]
-    
+
     try:
         domains = client.list_domain_definitions()
-        
+
         table = Table(title="Domain Definitions")
         table.add_column("ID", style="cyan")
         table.add_column("Domain ID", style="magenta")
         table.add_column("Kind", style="yellow")
         table.add_column("Scope", style="green")
-        
+
         for domain in domains:
             table.add_row(
-                str(domain["id"])[:8],
-                domain["domain_id"],
-                domain["kind"],
-                domain["scope_type"]
+                str(domain["id"])[:8], domain["domain_id"], domain["kind"], domain["scope_type"]
             )
-        
+
         console.print(table)
     except Exception as e:
         console.print(f"[red]✗[/red] Error: {e}")

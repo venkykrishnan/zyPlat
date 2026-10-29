@@ -58,9 +58,9 @@ class ZyPlatClient:
 
     # Import operations
     def import_from_file(self, file_path: str, entity_type: str) -> Dict[str, Any]:
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             data = json.load(f)
-        
+
         if entity_type == "company":
             return self.create_company(data)
         elif entity_type == "taxonomy":

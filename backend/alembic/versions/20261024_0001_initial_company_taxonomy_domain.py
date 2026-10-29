@@ -70,8 +70,7 @@ def upgrade() -> None:
     ):
         enum_type.create(bind, checkfirst=True)
 
-    op.execute(
-        """
+    op.execute("""
         CREATE OR REPLACE FUNCTION set_updated_at()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -79,8 +78,7 @@ def upgrade() -> None:
           RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-        """
-    )
+        """)
 
     op.create_table(
         "companies",
@@ -203,9 +201,7 @@ def upgrade() -> None:
         sa.Column("period_value", sa.Text(), nullable=False),
         sa.Column("snapshot_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.ForeignKeyConstraint(["company_id"], ["companies.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(
-            ["snapshot_id"], ["company_snapshots.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["snapshot_id"], ["company_snapshots.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("company_id", "period_type", "period_value"),
     )
 
@@ -260,9 +256,7 @@ def upgrade() -> None:
             """,
             name="ck_taxonomy_published_fields",
         ),
-        sa.ForeignKeyConstraint(
-            ["owner_company_id"], ["companies.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["owner_company_id"], ["companies.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -339,7 +333,9 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["taxonomy_definition_id"], ["taxonomy_definitions.id"], ondelete="CASCADE"
         ),
-        sa.ForeignKeyConstraint(["parent_entity_id"], ["taxonomy_entities.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["parent_entity_id"], ["taxonomy_entities.id"], ondelete="RESTRICT"
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "taxonomy_definition_id",
@@ -393,12 +389,8 @@ def upgrade() -> None:
             """,
             name="ck_domain_scope_owner",
         ),
-        sa.CheckConstraint(
-            "length(trim(domain_id)) > 0", name="ck_domain_id_not_empty"
-        ),
-        sa.ForeignKeyConstraint(
-            ["owner_company_id"], ["companies.id"], ondelete="CASCADE"
-        ),
+        sa.CheckConstraint("length(trim(domain_id)) > 0", name="ck_domain_id_not_empty"),
+        sa.ForeignKeyConstraint(["owner_company_id"], ["companies.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
@@ -447,9 +439,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.CheckConstraint(
-            "length(trim(name)) > 0", name="ck_domain_dimension_name_not_empty"
-        ),
+        sa.CheckConstraint("length(trim(name)) > 0", name="ck_domain_dimension_name_not_empty"),
         sa.CheckConstraint(
             """
             (taxonomy_id IS NULL AND taxonomy_version_strategy IS NULL AND taxonomy_version IS NULL)
@@ -470,12 +460,8 @@ def upgrade() -> None:
             ["domain_definition_id"], ["domain_definitions.id"], ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "domain_definition_id", "name", name="uq_domain_dimensions_name"
-        ),
-        sa.UniqueConstraint(
-            "domain_definition_id", "ordinal", name="uq_domain_dimensions_ordinal"
-        ),
+        sa.UniqueConstraint("domain_definition_id", "name", name="uq_domain_dimensions_name"),
+        sa.UniqueConstraint("domain_definition_id", "ordinal", name="uq_domain_dimensions_ordinal"),
     )
     op.create_index(
         "ix_domain_dimensions_taxonomy_lookup",
@@ -500,9 +486,7 @@ def upgrade() -> None:
         sa.Column(
             "is_point_in_time", sa.Boolean(), nullable=False, server_default=sa.text("FALSE")
         ),
-        sa.Column(
-            "is_end_value", sa.Boolean(), nullable=False, server_default=sa.text("FALSE")
-        ),
+        sa.Column("is_end_value", sa.Boolean(), nullable=False, server_default=sa.text("FALSE")),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -515,17 +499,13 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.CheckConstraint(
-            "length(trim(name)) > 0", name="ck_domain_metric_name_not_empty"
-        ),
+        sa.CheckConstraint("length(trim(name)) > 0", name="ck_domain_metric_name_not_empty"),
         sa.ForeignKeyConstraint(
             ["domain_definition_id"], ["domain_definitions.id"], ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("domain_definition_id", "name", name="uq_domain_metrics_name"),
-        sa.UniqueConstraint(
-            "domain_definition_id", "ordinal", name="uq_domain_metrics_ordinal"
-        ),
+        sa.UniqueConstraint("domain_definition_id", "ordinal", name="uq_domain_metrics_ordinal"),
     )
 
     op.create_table(
@@ -670,14 +650,12 @@ def upgrade() -> None:
     )
 
     for table_name in TRIGGER_TABLES:
-        op.execute(
-            f"""
+        op.execute(f"""
             CREATE TRIGGER trg_{table_name}_updated_at
             BEFORE UPDATE ON {table_name}
             FOR EACH ROW
             EXECUTE FUNCTION set_updated_at();
-            """
-        )
+            """)
 
 
 def downgrade() -> None:

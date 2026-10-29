@@ -4,7 +4,11 @@ from typing import List
 from uuid import UUID
 
 from ..core.database import get_db
-from ..schemas.domain import DomainDefinitionCreate, DomainDefinitionUpdate, DomainDefinitionResponse
+from ..schemas.domain import (
+    DomainDefinitionCreate,
+    DomainDefinitionUpdate,
+    DomainDefinitionResponse,
+)
 from ..crud import domain as crud
 
 router = APIRouter()
@@ -24,19 +28,27 @@ def list_domain_definitions(skip: int = 0, limit: int = 100, db: Session = Depen
 def get_domain_definition(domain_id: UUID, db: Session = Depends(get_db)):
     db_domain = crud.get_domain_definition(db, domain_id)
     if not db_domain:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Domain definition not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Domain definition not found"
+        )
     return db_domain
 
 
 @router.put("/{domain_id}", response_model=DomainDefinitionResponse)
-def update_domain_definition(domain_id: UUID, domain: DomainDefinitionUpdate, db: Session = Depends(get_db)):
+def update_domain_definition(
+    domain_id: UUID, domain: DomainDefinitionUpdate, db: Session = Depends(get_db)
+):
     db_domain = crud.update_domain_definition(db, domain_id, domain)
     if not db_domain:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Domain definition not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Domain definition not found"
+        )
     return db_domain
 
 
 @router.delete("/{domain_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_domain_definition(domain_id: UUID, db: Session = Depends(get_db)):
     if not crud.delete_domain_definition(db, domain_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Domain definition not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Domain definition not found"
+        )
