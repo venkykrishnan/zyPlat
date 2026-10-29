@@ -92,8 +92,12 @@ jobs:
         env:
           DATABASE_URL: postgresql://zyplat:zyplat@localhost:5432/zyplat_test
         run: |
-          pytest tests/ -v --cov=backend/app --cov=cli/zyplat_cli --cov-report=xml --cov-report=term
+          pytest tests/ -v --cov=backend/app --cov=cli/zyplat_cli --cov-report=xml --cov-report=term --cov-fail-under=80
         continue-on-error: false
+      
+      - name: Check coverage threshold
+        run: |
+          echo "✅ Coverage meets minimum threshold of 80%"
       
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3

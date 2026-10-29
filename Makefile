@@ -120,11 +120,24 @@ fix:
 .PHONY: test
 test:
 	@echo "Running tests..."
-	@pytest tests/ -v
+	@python -m pytest tests/ -v
 	@echo "✓ Tests complete"
 
 .PHONY: test-cov
 test-cov:
 	@echo "Running tests with coverage..."
-	@pytest tests/ -v --cov=backend/app --cov=cli/zyplat_cli --cov-report=html --cov-report=term
+	@python -m pytest tests/ -v --cov=backend/app --cov=cli/zyplat_cli --cov-report=html --cov-report=term --cov-fail-under=80
 	@echo "✓ Coverage report generated in htmlcov/"
+	@echo "✓ Coverage meets minimum threshold of 80%"
+
+.PHONY: test-unit
+test-unit:
+	@echo "Running unit tests..."
+	@python -m pytest tests/unit/ -v
+	@echo "✓ Unit tests complete"
+
+.PHONY: test-integration
+test-integration:
+	@echo "Running integration tests..."
+	@python -m pytest tests/integration/ -v
+	@echo "✓ Integration tests complete"
