@@ -1,6 +1,7 @@
-import requests
-from typing import Dict, Any, List, Optional
 import json
+from typing import Any
+
+import requests
 
 
 class ZyPlatClient:
@@ -15,50 +16,50 @@ class ZyPlatClient:
         return response
 
     # Company operations
-    def create_company(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_company(self, data: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/companies", json=data).json()
 
-    def list_companies(self) -> List[Dict[str, Any]]:
+    def list_companies(self) -> list[dict[str, Any]]:
         return self._request("GET", "/companies").json()
 
-    def get_company(self, company_id: str) -> Dict[str, Any]:
+    def get_company(self, company_id: str) -> dict[str, Any]:
         return self._request("GET", f"/companies/{company_id}").json()
 
-    def update_company(self, company_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    def update_company(self, company_id: str, data: dict[str, Any]) -> dict[str, Any]:
         return self._request("PUT", f"/companies/{company_id}", json=data).json()
 
     def delete_company(self, company_id: str) -> None:
         self._request("DELETE", f"/companies/{company_id}")
 
     # Taxonomy operations
-    def create_taxonomy_definition(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_taxonomy_definition(self, data: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/taxonomies/definitions", json=data).json()
 
-    def list_taxonomy_definitions(self) -> List[Dict[str, Any]]:
+    def list_taxonomy_definitions(self) -> list[dict[str, Any]]:
         return self._request("GET", "/taxonomies/definitions").json()
 
-    def get_taxonomy_definition(self, taxonomy_id: str) -> Dict[str, Any]:
+    def get_taxonomy_definition(self, taxonomy_id: str) -> dict[str, Any]:
         return self._request("GET", f"/taxonomies/definitions/{taxonomy_id}").json()
 
-    def create_taxonomy_entity(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_taxonomy_entity(self, data: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/taxonomies/entities", json=data).json()
 
-    def list_taxonomy_entities(self, definition_id: str) -> List[Dict[str, Any]]:
+    def list_taxonomy_entities(self, definition_id: str) -> list[dict[str, Any]]:
         return self._request("GET", f"/taxonomies/definitions/{definition_id}/entities").json()
 
     # Domain operations
-    def create_domain_definition(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_domain_definition(self, data: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/domains", json=data).json()
 
-    def list_domain_definitions(self) -> List[Dict[str, Any]]:
+    def list_domain_definitions(self) -> list[dict[str, Any]]:
         return self._request("GET", "/domains").json()
 
-    def get_domain_definition(self, domain_id: str) -> Dict[str, Any]:
+    def get_domain_definition(self, domain_id: str) -> dict[str, Any]:
         return self._request("GET", f"/domains/{domain_id}").json()
 
     # Import operations
-    def import_from_file(self, file_path: str, entity_type: str) -> Dict[str, Any]:
-        with open(file_path, "r") as f:
+    def import_from_file(self, file_path: str, entity_type: str) -> dict[str, Any]:
+        with open(file_path) as f:
             data = json.load(f)
 
         if entity_type == "company":

@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api import company, domain, taxonomy
 from .core.config import settings
-from .api import company, taxonomy, domain
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

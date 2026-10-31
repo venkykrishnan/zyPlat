@@ -18,7 +18,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | Resolve remaining model/migration drift (`alembic check` reported about 35 operations before recent fixes): `domain_instance_entities` (`data` column in migration and schema doc vs `dimensions`/`metrics` in model), `TEXT` vs `VARCHAR` columns, lookup index names (`ix_domain_lookup` vs `ix_domain_definitions_kind`), `ix_domain_instance_snapshots_instance` missing from migrations, and every table not yet covered by `TestModelsMatchMigrations`. Then make `alembic/env.py` fail loudly instead of swallowing model import errors (`target_metadata=None`) | TODO |
 | Fix `Makefile` default `DATABASE_URL` (`postgresql+psycopg://`, needs psycopg 3) to match the psycopg2 dependency | TODO |
 | Check `Dockerfile`: `COPY alembic.ini ./` (no such file at the repo root; it is `backend/alembic.ini`), and test the new `INSTANCE_DATA_DIR` setup | TODO |
-| Pay down lint and type baseline: ruff (about 136 errors), mypy (30 errors in 6 files), so the "Code Quality Checks" CI job can pass (it fails on ruff and mypy today, which also blocks the test job) | TODO |
+| Fix the 30 mypy errors in 6 files (mostly legacy `Column` typing in models and CRUD) so the "Code Quality Checks" CI job can pass; it fails on mypy today, which also skips the test job | TODO |
 | Run `scripts/db/verify_schema.sql` in CI | TODO |
 | Trim tutorial-style examples in `docs/conventions/*.md` now that tooling enforces most of them | TODO |
 | Resolve duplicate-case files in `input/domains/` (`GeneralLedger.json` vs `generalLedger.json`, `LoanPayment.json` vs `loanPayment.json`); on macOS they show as modified in git | TODO |
@@ -41,5 +41,6 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | Fix NULL-owner uniqueness: duplicate global taxonomy versions, global domains, and several default versions of one global taxonomy were allowed in the models, and the default rule was also broken in the migration (new migration `20261031_0003`) | DONE |
 | Add a separate CI `migrations` job that does not depend on `code-quality`; confirmed passing on the PR (Postgres 15, Python 3.11) | DONE |
 | Delete the obsolete `db/` Alembic copy after the CI `migrations` job passed | DONE |
+| Clear all ruff errors in `backend/` and `cli/` (136 to 0), including `published_at` being stored hours off when the database timezone is not UTC (`utcnow()` replaced with `now(UTC)`) | DONE |
 | Protect `main`: require the `Verify Alembic Migrations` status check | DONE |
 | Make `backend/alembic` the single working Alembic setup (fixed `script_location` and enum creation; CI migration step previously could not succeed) | DONE |

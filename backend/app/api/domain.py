@@ -1,15 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from ..core.database import get_db
+from ..crud import domain as crud
 from ..schemas.domain import (
     DomainDefinitionCreate,
-    DomainDefinitionUpdate,
     DomainDefinitionResponse,
+    DomainDefinitionUpdate,
 )
-from ..crud import domain as crud
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ def create_domain_definition(domain: DomainDefinitionCreate, db: Session = Depen
     return crud.create_domain_definition(db, domain)
 
 
-@router.get("/", response_model=List[DomainDefinitionResponse])
+@router.get("/", response_model=list[DomainDefinitionResponse])
 def list_domain_definitions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_domain_definitions(db, skip=skip, limit=limit)
 

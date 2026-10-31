@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
 from ..models.domain import DomainKind
 from ..models.taxonomy import DefinitionScope
 
@@ -11,7 +12,7 @@ class DomainDefinitionBase(BaseModel):
     description: str
     kind: DomainKind
     scope_type: DefinitionScope
-    owner_company_id: Optional[UUID] = None
+    owner_company_id: UUID | None = None
 
 
 class DomainDefinitionCreate(DomainDefinitionBase):
@@ -19,7 +20,7 @@ class DomainDefinitionCreate(DomainDefinitionBase):
 
 
 class DomainDefinitionUpdate(BaseModel):
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class DomainDefinitionResponse(DomainDefinitionBase):

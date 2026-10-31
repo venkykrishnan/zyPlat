@@ -1,20 +1,20 @@
 import enum
+
 from sqlalchemy import (
-    Column,
-    String,
     Boolean,
+    CheckConstraint,
+    Column,
     DateTime,
     Enum,
     ForeignKey,
-    Integer,
-    CheckConstraint,
     Index,
+    Integer,
+    String,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.sql import func, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
-import uuid
+from sqlalchemy.sql import func, text
 
 from ..core.database import Base
 

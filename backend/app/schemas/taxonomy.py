@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
 from ..models.taxonomy import DefinitionScope
 
 
@@ -9,10 +10,10 @@ class TaxonomyDefinitionBase(BaseModel):
     taxonomy_id: str = Field(..., min_length=1)
     version: str = Field(..., min_length=1)
     scope_type: DefinitionScope
-    owner_company_id: Optional[UUID] = None
+    owner_company_id: UUID | None = None
     description: str
     is_hierarchical: bool = False
-    allowed_classifications: List[str] = Field(default_factory=list)
+    allowed_classifications: list[str] = Field(default_factory=list)
     is_published: bool = False
     is_default: bool = False
 
@@ -22,15 +23,15 @@ class TaxonomyDefinitionCreate(TaxonomyDefinitionBase):
 
 
 class TaxonomyDefinitionUpdate(BaseModel):
-    description: Optional[str] = None
-    is_published: Optional[bool] = None
-    is_default: Optional[bool] = None
-    allowed_classifications: Optional[List[str]] = None
+    description: str | None = None
+    is_published: bool | None = None
+    is_default: bool | None = None
+    allowed_classifications: list[str] | None = None
 
 
 class TaxonomyDefinitionResponse(TaxonomyDefinitionBase):
     id: UUID
-    published_at: Optional[datetime] = None
+    published_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -42,8 +43,8 @@ class TaxonomyEntityBase(BaseModel):
     value: str
     display_name: str
     description: str
-    parent_entity_id: Optional[UUID] = None
-    explicit_classifications: List[str] = Field(default_factory=list)
+    parent_entity_id: UUID | None = None
+    explicit_classifications: list[str] = Field(default_factory=list)
     is_base_entity: bool = True
 
 
@@ -52,11 +53,11 @@ class TaxonomyEntityCreate(TaxonomyEntityBase):
 
 
 class TaxonomyEntityUpdate(BaseModel):
-    value: Optional[str] = None
-    display_name: Optional[str] = None
-    description: Optional[str] = None
-    parent_entity_id: Optional[UUID] = None
-    explicit_classifications: Optional[List[str]] = None
+    value: str | None = None
+    display_name: str | None = None
+    description: str | None = None
+    parent_entity_id: UUID | None = None
+    explicit_classifications: list[str] | None = None
 
 
 class TaxonomyEntityResponse(TaxonomyEntityBase):

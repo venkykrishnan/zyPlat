@@ -1,13 +1,13 @@
 from .company import Company, CompanySnapshot, CompanySnapshotHead
-from .taxonomy import TaxonomyDefinition, TaxonomyEntity
 from .domain import (
     DomainDefinition,
     DomainDimension,
-    DomainMetric,
     DomainInstance,
-    DomainInstanceSnapshot,
     DomainInstanceEntity,
+    DomainInstanceSnapshot,
+    DomainMetric,
 )
+from .taxonomy import TaxonomyDefinition, TaxonomyEntity
 
 __all__ = [
     "Company",

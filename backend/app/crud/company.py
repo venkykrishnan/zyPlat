@@ -1,20 +1,21 @@
-from sqlalchemy.orm import Session
-from typing import Any, List, Optional
+from typing import Any
 from uuid import UUID
+
+from sqlalchemy.orm import Session
 
 from ..models.company import Company
 from ..schemas.company import CompanyCreate, CompanyUpdate
 
 
-def get_company(db: Session, company_id: UUID) -> Optional[Company]:
+def get_company(db: Session, company_id: UUID) -> Company | None:
     return db.query(Company).filter(Company.id == company_id).first()
 
 
-def get_company_by_company_id(db: Session, company_id: str) -> Optional[Company]:
+def get_company_by_company_id(db: Session, company_id: str) -> Company | None:
     return db.query(Company).filter(Company.company_id == company_id).first()
 
 
-def get_companies(db: Session, skip: int = 0, limit: int = 100) -> List[Company]:
+def get_companies(db: Session, skip: int = 0, limit: int = 100) -> list[Company]:
     return db.query(Company).offset(skip).limit(limit).all()
 
 
@@ -39,9 +40,7 @@ def create_company(db: Session, company: CompanyCreate) -> Company:
     return db_company
 
 
-def update_company(
-    db: Session, company_id: UUID, company_update: CompanyUpdate
-) -> Optional[Company]:
+def update_company(db: Session, company_id: UUID, company_update: CompanyUpdate) -> Company | None:
     db_company = get_company(db, company_id)
     if not db_company:
         return None
