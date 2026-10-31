@@ -78,13 +78,18 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r backend/requirements-dev.txt
-      
+          pip install -r cli/requirements-dev.txt
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://zyplat:zyplat@localhost:5432/zyplat_test
+        working-directory: backend
+        run: alembic upgrade head
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql://zyplat:zyplat@localhost:5432/zyplat_test
-        run: |
-          cd backend && alembic upgrade head
-          pytest tests/ -v
+        run: pytest tests/ -v
       
       - name: Test gate passed
         run: echo "✅ Tests passed - proceeding to deployment"
