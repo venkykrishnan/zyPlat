@@ -4,8 +4,8 @@ This plan describes how to execute the migrations in `backend/alembic/versions/`
 (`20261024_0001` initial schema, `20261031_0002` instance snapshot storage pointer,
 `20261031_0003` one default taxonomy version per scope).
 
-`backend/alembic` is the single canonical Alembic directory. The older `db/alembic` copy is
-obsolete and is deleted only after the CI "Verify Alembic migrations" step has passed on a PR.
+`backend/alembic` is the single Alembic directory. The older `db/alembic` copy was deleted after
+the CI `migrations` job passed on the pull request for this branch.
 
 ## 1) Objective
 
@@ -123,7 +123,6 @@ drift reported by `alembic check` (see `backlog.md`).
 
 ## 10) Immediate next actions
 
-1. Confirm the CI "Verify Alembic migrations" step passes on a PR, then delete `db/`.
-2. Run `make db-verify` and capture output in CI logs.
-3. Reconcile `alembic check` drift between models and migrations.
+1. Run `make db-verify` and capture output in CI logs.
+2. Reconcile `alembic check` drift between models and migrations.
 

@@ -13,9 +13,8 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | Move business rules out of routers into a service layer (routers currently raise `HTTPException`; `services/instance_data.py` is the first service) | TODO |
 | Align code layout with `AGENTS.md` module structure (`modules/<name>/...`) | TODO |
 | Align CI Python version (3.11, and mypy `python_version`) with the 3.12 baseline in `AGENTS.md` | TODO |
-| Confirm GitHub branch protection requires the CI checks before merging to `main` | TODO |
+| Add `Code Quality Checks` and `Run Tests` to the required status checks on `main` once the ruff and mypy cleanup lands (`main` was unprotected; it now requires only `Verify Alembic Migrations`, with up-to-date branches, no required reviews, admins not enforced) | TODO |
 | Review unmerged remote branches (`cursor/*`) and merge or delete each | TODO |
-| Confirm the CI `migrations` job passes on a PR (it has only been run locally), then delete `db/` | TODO |
 | Resolve remaining model/migration drift (`alembic check` reported about 35 operations before recent fixes): `domain_instance_entities` (`data` column in migration and schema doc vs `dimensions`/`metrics` in model), `TEXT` vs `VARCHAR` columns, lookup index names (`ix_domain_lookup` vs `ix_domain_definitions_kind`), `ix_domain_instance_snapshots_instance` missing from migrations, and every table not yet covered by `TestModelsMatchMigrations`. Then make `alembic/env.py` fail loudly instead of swallowing model import errors (`target_metadata=None`) | TODO |
 | Fix `Makefile` default `DATABASE_URL` (`postgresql+psycopg://`, needs psycopg 3) to match the psycopg2 dependency | TODO |
 | Check `Dockerfile`: `COPY alembic.ini ./` (no such file at the repo root; it is `backend/alembic.ini`), and test the new `INSTANCE_DATA_DIR` setup | TODO |
@@ -40,5 +39,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | Update plan, schema docs, and Alembic plan for the storage design | DONE |
 | Fix company `metadata`: it was never saved on create or update (CRUD wrote it to a plain Python attribute) and reads failed response validation; the public name is `metadata`, mapped to the `metadata_` column | DONE |
 | Fix NULL-owner uniqueness: duplicate global taxonomy versions, global domains, and several default versions of one global taxonomy were allowed in the models, and the default rule was also broken in the migration (new migration `20261031_0003`) | DONE |
-| Add a separate CI `migrations` job that does not depend on `code-quality` | DONE |
+| Add a separate CI `migrations` job that does not depend on `code-quality`; confirmed passing on the PR (Postgres 15, Python 3.11) | DONE |
+| Delete the obsolete `db/` Alembic copy after the CI `migrations` job passed | DONE |
+| Protect `main`: require the `Verify Alembic Migrations` status check | DONE |
 | Make `backend/alembic` the single working Alembic setup (fixed `script_location` and enum creation; CI migration step previously could not succeed) | DONE |

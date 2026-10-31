@@ -1,6 +1,6 @@
 ---
 description: SQLAlchemy model and Alembic migration conventions
-globs: backend/app/models/**/*.py, **/models.py, backend/alembic/**/*.py, db/alembic/**/*.py
+globs: backend/app/models/**/*.py, **/models.py, backend/alembic/**/*.py
 alwaysApply: false
 ---
 
