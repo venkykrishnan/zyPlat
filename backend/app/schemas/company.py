@@ -38,6 +38,9 @@ class CompanyUpdate(BaseModel):
 class CompanyResponse(CompanyBase):
     id: UUID
     report_info: List[Dict[str, Any]]
+    # The ORM attribute is `metadata_` because `metadata` is reserved by SQLAlchemy's declarative
+    # base. Reading `metadata` from the model would return the table registry, not the column.
+    metadata: dict[str, Any] = Field(validation_alias="metadata_")
     created_at: datetime
     updated_at: datetime
 
