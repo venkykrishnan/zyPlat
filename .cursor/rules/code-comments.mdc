@@ -1,0 +1,41 @@
+---
+description: When and how to write code comments and TODOs in zyPlat
+globs: **/*.py
+alwaysApply: false
+---
+
+# Code Comments
+
+Comments explain **why**, never **what**. If a comment narrates the code, improve the name or
+extract a function instead.
+
+- Do not write comments that restate the code, narrate steps, or describe the language.
+- Write comments for non-obvious decisions, business rules, gotchas, and workarounds.
+- Replace magic numbers with named constants rather than commenting them.
+- Use docstrings, not inline comments, to describe functions.
+- Delete commented-out code; it is in git history.
+- Use complete sentences and keep comments to one concise sentence where possible.
+- Marker format: `TODO(owner, YYYY-MM-DD): context`, `FIXME(...)`, and `HACK:` with a link and
+  removal condition. Never leave a bare `# TODO: fix this`.
+
+```python
+# ❌ BAD
+# Loop through companies
+for company in companies:
+    # Check if enabled
+    if company.is_enabled:
+        results.append(company)
+
+# ✅ GOOD (no comments needed)
+for company in companies:
+    if company.is_enabled:
+        results.append(company)
+
+# ✅ GOOD (explains why)
+# Taxonomy lookup must check scope_type so company-scoped taxonomies
+# do not leak to other companies.
+if taxonomy.scope_type == DefinitionScope.COMPANY:
+    ...
+```
+
+Full reference: `docs/conventions/code-comments.md`.

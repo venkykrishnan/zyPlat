@@ -1,0 +1,32 @@
+---
+description: Python formatting, naming, imports, type hints, and docstrings for zyPlat
+globs: **/*.py
+alwaysApply: false
+---
+
+# Python Style
+
+Tooling is configured in `pyproject.toml`; CI runs `black --check`, `ruff check`, and `mypy`.
+Run `make format` and `make lint` before finishing a change.
+
+- Line length 100, double quotes, trailing commas in multi-line structures (black).
+- Names: `snake_case` functions/variables, `PascalCase` classes, `UPPER_SNAKE_CASE` constants,
+  `_leading_underscore` for private members.
+- Import order (ruff): `__future__`, standard library, third-party, local.
+- Type hints are required on public function and method signatures and on non-`None` returns.
+- Google-style docstrings on public functions and classes; one line is fine for simple ones.
+- Error messages state what was wrong and what is expected. Log messages carry context in
+  `extra={...}` (see logging rules in `AGENTS.md`).
+
+```python
+# ❌ BAD
+raise ValueError("Invalid input")
+
+# ✅ GOOD
+raise ValidationError(
+    f"Period value '{period_value}' does not match format for {period_type}. "
+    f"Expected format: YYYY-MM for MONTH type."
+)
+```
+
+Full reference: `docs/conventions/python-style.md`.

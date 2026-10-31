@@ -1,0 +1,28 @@
+---
+description: SQLAlchemy model and Alembic migration conventions
+globs: backend/app/models/**/*.py, **/models.py, backend/alembic/**/*.py, db/alembic/**/*.py
+alwaysApply: false
+---
+
+# SQLAlchemy Models and Migrations
+
+- Field names are `snake_case` and match the database column names.
+- `metadata` is reserved by SQLAlchemy. Use a trailing underscore with an explicit column name:
+  `metadata_ = Column("metadata", JSONB, ...)`.
+- Be explicit about relationship cascades (for example `cascade="all, delete-orphan"`).
+- All schema changes go through Alembic migrations; never alter schema in runtime code.
+- Keep structural integrity in DB constraints (unique, check, foreign key). Enforce complex domain
+  rules in services and validators.
+- Add indexes deliberately for lookup and default-resolution paths.
+- Instance time-series data storage is under design; see `docs/plans/instance-data-storage.md`
+  before adding columns or tables for it.
+
+```python
+# ❌ BAD
+metadata = Column(JSONB)
+
+# ✅ GOOD
+metadata_ = Column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+```
+
+Full reference: `docs/conventions/framework-conventions.md`.

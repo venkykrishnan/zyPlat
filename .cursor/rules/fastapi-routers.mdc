@@ -1,0 +1,26 @@
+---
+description: FastAPI router conventions (thin routers, response models, typed errors)
+globs: backend/app/api/**/*.py, **/router.py
+alwaysApply: false
+---
+
+# FastAPI Routers
+
+- Routers handle request/response and dependency injection only; no business logic.
+- Use `Depends()` explicitly and always set `response_model` (plus `status_code` on creates).
+- Do not raise `HTTPException` from services or repositories. Raise typed exceptions
+  (`NotFoundError`, `ConflictError`, `ValidationError`, `AuthorizationError`,
+  `InfrastructureError`); `api/error_handlers.py` maps them to HTTP responses.
+- Error responses keep a stable shape: machine-readable code, human-readable message, request id.
+
+```python
+# ✅ GOOD
+@router.get("/companies/{company_id}", response_model=CompanyResponse)
+def get_company(company_id: UUID, db: Session = Depends(get_db)) -> CompanyResponse:
+    return company_service.get_company(db, company_id)  # raises NotFoundError
+```
+
+Existing routers under `backend/app/api/` still raise `HTTPException` directly. Do not copy that
+pattern into new code; migrating it is tracked in `docs/plans/backlog.md`.
+
+Full reference: `docs/conventions/framework-conventions.md`.

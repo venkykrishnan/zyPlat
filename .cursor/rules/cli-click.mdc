@@ -1,0 +1,22 @@
+---
+description: Click CLI conventions for the zyPlat command line tool
+globs: cli/**/*.py
+alwaysApply: false
+---
+
+# CLI (Click)
+
+- Command names use kebab-case, for example `@cli.command("list-taxonomies")`.
+- Options use the long form with a double dash, for example `--api-url`, and `click.Choice` for
+  fixed values.
+- Format output with Rich (`Console`, `Table`); errors print in red and end with `click.Abort()`.
+- The CLI talks to the REST API through `ZyPlatClient`; do not import backend modules.
+
+```python
+@cli.command("list-taxonomies")
+@click.option("--format", "output_format", type=click.Choice(["json", "table"]))
+def list_taxonomies(output_format: str) -> None:
+    ...
+```
+
+Full reference: `docs/conventions/framework-conventions.md`.

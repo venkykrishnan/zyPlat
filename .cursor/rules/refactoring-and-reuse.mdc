@@ -1,0 +1,40 @@
+---
+description: When to refactor, how to manage complexity, and when to share code in zyPlat
+globs: **/*.py
+alwaysApply: false
+---
+
+# Refactoring and Reuse
+
+- Boy Scout rule: leave touched code better (clear names, type hints, docstrings, no dead code).
+- Refactor before extending messy code, but only with passing tests. Commit refactors separately
+  from feature changes.
+- Complexity red flags: nesting over 3 levels, more than 4 parameters (group them in a Pydantic
+  model), function over 50 lines, class over 200 lines or 10 public methods, file over 500 lines.
+- Prefer guard clauses and extracted helpers to nested conditionals.
+- Rule of Three: extract shared code only after it appears 3+ times and represents the same
+  concept. Duplication is fine for code that changes for different reasons.
+- Do not build frameworks or abstractions before there are 2-3 concrete uses.
+- Shared utilities live in `app/utils/`, are pure and typed, and have a docstring with an example
+  plus unit tests.
+- Use `TimestampMixin`-style mixins for shared model columns instead of copying them.
+
+```python
+# ❌ BAD: nested
+def process(taxonomy_id, company_id):
+    if taxonomy_id:
+        taxonomy = get_taxonomy(taxonomy_id)
+        if taxonomy:
+            ...
+
+# ✅ GOOD: guard clauses
+def process(taxonomy_id: str, company_id: UUID) -> TaxonomyDefinition:
+    if not taxonomy_id:
+        raise ValidationError("taxonomy_id is required")
+    taxonomy = get_taxonomy(taxonomy_id)
+    if not taxonomy:
+        raise NotFoundError(f"Taxonomy {taxonomy_id} not found")
+    return taxonomy
+```
+
+Full reference: `docs/conventions/code-evolution.md` and `docs/conventions/code-reuse.md`.
