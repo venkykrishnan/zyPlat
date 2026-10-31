@@ -46,12 +46,22 @@ class TaxonomyDefinition(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "scope_type",
+        # Global rows have a NULL owner, which a plain unique constraint treats as distinct, so
+        # uniqueness is enforced by one partial unique index per scope.
+        Index(
+            "uq_taxonomy_definitions_global_taxonomy_version",
+            "taxonomy_id",
+            "version",
+            unique=True,
+            postgresql_where=text("scope_type = 'GLOBAL'"),
+        ),
+        Index(
+            "uq_taxonomy_definitions_company_taxonomy_version",
             "owner_company_id",
             "taxonomy_id",
             "version",
-            name="uq_taxonomy_definitions_scope_taxonomy_version",
+            unique=True,
+            postgresql_where=text("scope_type = 'COMPANY'"),
         ),
         CheckConstraint(
             """
@@ -66,12 +76,17 @@ class TaxonomyDefinition(Base):
             name="ck_taxonomy_published_fields",
         ),
         Index(
-            "uq_taxonomy_default_per_scope",
-            "scope_type",
+            "uq_taxonomy_default_global",
+            "taxonomy_id",
+            unique=True,
+            postgresql_where=text("is_default = TRUE AND scope_type = 'GLOBAL'"),
+        ),
+        Index(
+            "uq_taxonomy_default_company",
             "owner_company_id",
             "taxonomy_id",
             unique=True,
-            postgresql_where=text("is_default = TRUE"),
+            postgresql_where=text("is_default = TRUE AND scope_type = 'COMPANY'"),
         ),
         Index(
             "ix_taxonomy_lookup",

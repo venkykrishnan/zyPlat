@@ -9,7 +9,7 @@ DB_IMAGE ?= postgres:16
 
 DATABASE_URL ?= postgresql+psycopg://$(DB_USER):$(DB_PASSWORD)@localhost:$(DB_PORT)/$(DB_NAME)
 PSQL_URL ?= postgresql://$(DB_USER):$(DB_PASSWORD)@localhost:$(DB_PORT)/$(DB_NAME)
-ALEMBIC ?= alembic -c db/alembic.ini
+ALEMBIC ?= alembic -c backend/alembic.ini
 
 help:
 	@echo "Available targets:"

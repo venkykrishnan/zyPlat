@@ -184,8 +184,6 @@ CREATE TABLE taxonomy_definitions (
   is_default BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT uq_taxonomy_definitions_scope_taxonomy_version
-    UNIQUE (scope_type, owner_company_id, taxonomy_id, version),
   CONSTRAINT ck_taxonomy_scope_owner
     CHECK (
       (scope_type = 'GLOBAL' AND owner_company_id IS NULL)
@@ -196,9 +194,24 @@ CREATE TABLE taxonomy_definitions (
     CHECK ((is_published = FALSE AND published_at IS NULL) OR (is_published = TRUE))
 );
 
-CREATE UNIQUE INDEX uq_taxonomy_default_per_scope
-  ON taxonomy_definitions (scope_type, owner_company_id, taxonomy_id)
-  WHERE is_default = TRUE;
+-- Uniqueness is one partial index per scope. A single UNIQUE (scope_type, owner_company_id, ...)
+-- would not work: global rows have a NULL owner and Postgres treats NULLs as distinct.
+CREATE UNIQUE INDEX uq_taxonomy_definitions_global_taxonomy_version
+  ON taxonomy_definitions (taxonomy_id, version)
+  WHERE scope_type = 'GLOBAL';
+
+CREATE UNIQUE INDEX uq_taxonomy_definitions_company_taxonomy_version
+  ON taxonomy_definitions (owner_company_id, taxonomy_id, version)
+  WHERE scope_type = 'COMPANY';
+
+-- At most one default version per taxonomy in each scope (migration 20261031_0003).
+CREATE UNIQUE INDEX uq_taxonomy_default_global
+  ON taxonomy_definitions (taxonomy_id)
+  WHERE is_default = TRUE AND scope_type = 'GLOBAL';
+
+CREATE UNIQUE INDEX uq_taxonomy_default_company
+  ON taxonomy_definitions (owner_company_id, taxonomy_id)
+  WHERE is_default = TRUE AND scope_type = 'COMPANY';
 
 CREATE INDEX ix_taxonomy_lookup
   ON taxonomy_definitions (taxonomy_id, scope_type, owner_company_id, is_published, is_default, updated_at DESC);
@@ -264,8 +277,6 @@ CREATE TABLE domain_definitions (
   kind domain_kind NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT uq_domain_definitions_scope_domain
-    UNIQUE (scope_type, owner_company_id, domain_id),
   CONSTRAINT ck_domain_scope_owner
     CHECK (
       (scope_type = 'GLOBAL' AND owner_company_id IS NULL)
@@ -274,6 +285,16 @@ CREATE TABLE domain_definitions (
     ),
   CONSTRAINT ck_domain_id_not_empty CHECK (length(trim(domain_id)) > 0)
 );
+
+-- One partial unique index per scope: global rows have a NULL owner, which Postgres treats as
+-- distinct in a plain UNIQUE constraint.
+CREATE UNIQUE INDEX uq_domain_definitions_global_domain
+  ON domain_definitions (domain_id)
+  WHERE scope_type = 'GLOBAL';
+
+CREATE UNIQUE INDEX uq_domain_definitions_company_domain
+  ON domain_definitions (owner_company_id, domain_id)
+  WHERE scope_type = 'COMPANY';
 
 CREATE INDEX ix_domain_definitions_kind ON domain_definitions(kind);
 ```
@@ -391,10 +412,23 @@ CREATE TABLE domain_instance_snapshots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   domain_instance_id UUID NOT NULL REFERENCES domain_instances(id) ON DELETE CASCADE,
   company_snapshot_id UUID NOT NULL REFERENCES company_snapshots(id) ON DELETE CASCADE,
+  storage_uri TEXT NULL,
+  row_count BIGINT NULL,
+  schema_hash VARCHAR(64) NULL,
+  checksum VARCHAR(64) NULL,
+  calc_run_id VARCHAR NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT uq_domain_instance_company_snapshot
-    UNIQUE (domain_instance_id, company_snapshot_id)
+    UNIQUE (domain_instance_id, company_snapshot_id),
+  CONSTRAINT uq_domain_instance_snapshots_storage_uri UNIQUE (storage_uri),
+  CONSTRAINT ck_domain_instance_snapshots_storage_pointer_complete CHECK (
+    (storage_uri IS NULL) = (row_count IS NULL)
+    AND (storage_uri IS NULL) = (schema_hash IS NULL)
+    AND (storage_uri IS NULL) = (checksum IS NULL)
+  ),
+  CONSTRAINT ck_domain_instance_snapshots_row_count_non_negative
+    CHECK (row_count IS NULL OR row_count >= 0)
 );
 
 CREATE INDEX ix_domain_instance_snapshots_company_snapshot
@@ -410,7 +444,17 @@ EXECUTE FUNCTION set_updated_at();
 
 Note: default snapshot head materialization is handled at company level via `company_snapshot_heads`.
 
+The `storage_*`, `row_count`, `schema_hash`, `checksum`, and `calc_run_id` columns point at the
+immutable Parquet file that holds a TIME_SERIES snapshot's rows. They are set together, once,
+when the file is written (migration `20261031_0002`). See `instance-data-storage.md`.
+
 ### 7.3 domain_instance_entities
+
+TIME_SERIES instance rows are **not** stored here; they live in Parquet files referenced from
+`domain_instance_snapshots` (see 7.2). This table is for SCALAR domains.
+
+Known drift: the migration and this section use a single `data` JSONB column, while the ORM model
+declares separate `dimensions` and `metrics` columns. Tracked in `backlog.md`.
 
 ```sql
 CREATE TABLE domain_instance_entities (
@@ -454,7 +498,7 @@ DB constraints enforce structure, but these remain in application logic:
 6. Global + company-scoped visibility filtering for taxonomy/domain definitions.
 7. Domain instance `classification_scope` must be valid for bound taxonomies.
 8. Domain-instance entity taxonomy dimension values must satisfy scope + base rules.
-9. Scalar-domain rule: permit null `domain_instance_snapshot_id`; time-series-domain rule: require non-null snapshot association.
+9. Scalar-domain rule: permit null `domain_instance_snapshot_id`. Time-series domains store rows in Parquet, validated at write time by `InstanceDataService` (columns, types, required fields, taxonomy values).
 10. Domain snapshot association must match company identity:
     - `domain_instances.company_id` must equal `company_snapshots.company_id` via `domain_instance_snapshots`.
 11. `companies.report_info` items must contain valid `report_date` and only domain-instance snapshot ids that belong to the same company.

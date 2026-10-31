@@ -94,6 +94,11 @@ strict_equality = true
 module = "alembic.*"
 ignore_errors = true
 
+# pyarrow ships no type stubs.
+[[tool.mypy.overrides]]
+module = "pyarrow.*"
+ignore_missing_imports = true
+
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
@@ -111,6 +116,7 @@ addopts = [
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
+    "migration: Alembic upgrade/downgrade tests (need a Postgres superuser)",
     "slow: Slow tests",
 ]
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from logging.config import fileConfig
 import os
-from pathlib import Path
 import sys
+from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -14,10 +14,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Keep imports resilient while project scaffold is being created.
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+# The app package lives in backend/, so migrations can import it from any working directory.
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 target_metadata = None
 try:
@@ -25,8 +25,8 @@ try:
     from app.core.database import Base  # type: ignore
     from app.models import (  # noqa: F401
         company,
-        taxonomy,
         domain,
+        taxonomy,
     )
 
     target_metadata = Base.metadata

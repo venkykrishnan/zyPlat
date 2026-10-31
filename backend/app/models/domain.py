@@ -1,23 +1,25 @@
 import enum
+
 from sqlalchemy import (
-    Column,
-    String,
+    BigInteger,
     Boolean,
+    CheckConstraint,
+    Column,
     DateTime,
     Enum,
     ForeignKey,
-    Integer,
-    CheckConstraint,
     Index,
+    Integer,
+    String,
+    Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func, text
-from sqlalchemy.orm import relationship
 
 from ..core.database import Base
 from .taxonomy import DefinitionScope
-from .company import PeriodGranularity
 
 
 class DomainKind(str, enum.Enum):
@@ -64,8 +66,20 @@ class DomainDefinition(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "scope_type", "owner_company_id", "domain_id", name="uq_domain_definitions_scope_domain"
+        # Global rows have a NULL owner, which a plain unique constraint treats as distinct, so
+        # uniqueness is enforced by one partial unique index per scope.
+        Index(
+            "uq_domain_definitions_global_domain",
+            "domain_id",
+            unique=True,
+            postgresql_where=text("scope_type = 'GLOBAL'"),
+        ),
+        Index(
+            "uq_domain_definitions_company_domain",
+            "owner_company_id",
+            "domain_id",
+            unique=True,
+            postgresql_where=text("scope_type = 'COMPANY'"),
         ),
         CheckConstraint(
             """
@@ -75,6 +89,7 @@ class DomainDefinition(Base):
             """,
             name="ck_domain_scope_owner",
         ),
+        CheckConstraint("length(trim(domain_id)) > 0", name="ck_domain_id_not_empty"),
         Index("ix_domain_lookup", "domain_id", "scope_type", "owner_company_id", "updated_at"),
     )
 
@@ -218,14 +233,38 @@ class DomainInstanceSnapshot(Base):
         UUID(as_uuid=True), ForeignKey("domain_instances.id", ondelete="CASCADE"), nullable=False
     )
     company_snapshot_id = Column(
-        UUID(as_uuid=True), ForeignKey("company_snapshots.id", ondelete="CASCADE"), nullable=True
+        UUID(as_uuid=True), ForeignKey("company_snapshots.id", ondelete="CASCADE"), nullable=False
     )
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
+    # Pointer to the immutable Parquet file holding this snapshot's rows (TIME_SERIES domains).
+    # The five fields are set together, once, when the file is written.
+    storage_uri: Mapped[str | None] = mapped_column(Text, nullable=True)
+    row_count: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    schema_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    calc_run_id: Mapped[str | None] = mapped_column(String, nullable=True)
+
     __table_args__ = (
+        UniqueConstraint(
+            "domain_instance_id", "company_snapshot_id", name="uq_domain_instance_company_snapshot"
+        ),
+        UniqueConstraint("storage_uri", name="uq_domain_instance_snapshots_storage_uri"),
+        CheckConstraint(
+            """
+            (storage_uri IS NULL) = (row_count IS NULL)
+            AND (storage_uri IS NULL) = (schema_hash IS NULL)
+            AND (storage_uri IS NULL) = (checksum IS NULL)
+            """,
+            name="ck_domain_instance_snapshots_storage_pointer_complete",
+        ),
+        CheckConstraint(
+            "row_count IS NULL OR row_count >= 0",
+            name="ck_domain_instance_snapshots_row_count_non_negative",
+        ),
         Index("ix_domain_instance_snapshots_instance", "domain_instance_id"),
         Index("ix_domain_instance_snapshots_company_snapshot", "company_snapshot_id"),
     )

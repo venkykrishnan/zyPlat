@@ -86,8 +86,9 @@ This plan still applies with that stack; only framework/ORM syntax changes.
 
 Constraints:
 
-- unique: `(scope_type, owner_company_id, taxonomy_id, version)`
-- one default per `(scope_type, owner_company_id, taxonomy_id)`
+- unique per scope: `(taxonomy_id, version)` for GLOBAL, `(owner_company_id, taxonomy_id, version)` for COMPANY
+- one default per taxonomy in each scope: `(taxonomy_id)` for GLOBAL, `(owner_company_id, taxonomy_id)` for COMPANY
+- implemented as partial unique indexes, one per scope, because global rows have a NULL owner and Postgres treats NULLs as distinct in a plain unique constraint
 - if `scope_type = COMPANY`, `owner_company_id` is required
 
 ## 3.2 Taxonomy entities
@@ -127,7 +128,7 @@ Constraints and rules:
 Notes:
 
 - Domain schemas include dimensions and metrics.
-- uniqueness is by scope: `(scope_type, owner_company_id, domain_id)`
+- uniqueness is by scope: `(domain_id)` for GLOBAL, `(owner_company_id, domain_id)` for COMPANY (partial unique indexes, see taxonomy note on NULL owners)
 - No version column on domains per clarified requirement.
 
 ## 3.4 Domain dimensions
@@ -211,12 +212,19 @@ Default rule:
 
 - `id` (UUID, PK)
 - `domain_instance_id` (FK)
-- `company_snapshot_id` (FK -> company_snapshots.id)
+- `company_snapshot_id` (FK -> company_snapshots.id, required)
+- `storage_uri`, `row_count`, `schema_hash`, `checksum` (nullable; set together when a TIME_SERIES snapshot's file is written)
+- `calc_run_id` (nullable; producing calculation run)
 - `created_at`, `updated_at`
 
 Constraints:
 
 - unique: `(domain_instance_id, company_snapshot_id)`
+- unique: `storage_uri`
+- storage pointer columns are all-or-nothing; `row_count >= 0`
+
+TIME_SERIES snapshot rows are stored as one immutable Parquet file per snapshot, not in Postgres.
+See `instance-data-storage.md`.
 
 ## 3.9 Domain-instance entities
 
@@ -230,7 +238,7 @@ Constraints:
 
 Rules:
 
-- For TIME_SERIES domain, `domain_instance_snapshot_id` is required.
+- TIME_SERIES domains do not use this table; their rows are stored in Parquet files (see 3.8).
 - For SCALAR domain, either:
   - keep one synthetic snapshot per instance, or
   - allow null snapshot and enforce one active row contract.
