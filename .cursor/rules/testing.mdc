@@ -1,0 +1,37 @@
+---
+description: Testing standards, structure, and coverage gates for zyPlat tests
+globs: tests/**/*.py
+alwaysApply: false
+---
+
+# Testing
+
+- Coverage gate: 80% overall (`--cov-fail-under=80`); CI blocks merges below it.
+- Pyramid: about 70% unit (rules, validators, model constraints), 25% integration (API + DB),
+  5% migration tests.
+- Layout: `tests/unit/` (fast, no external deps) and `tests/integration/` (DB + API).
+- Naming: `test_<action>_<expected_result>` with a docstring explaining what and why.
+- Structure tests as Arrange-Act-Assert; assert one concept per test with specific assertions.
+- Isolation: tests are independent and order-agnostic. Use function-scoped `db_session` and
+  `client` fixtures that roll back a transaction; session scope only for expensive setup such as
+  the engine. Keep fixture chains to 2-3 levels.
+- Use `pytest.raises(...)` for negative cases and test real DB constraints.
+- Always test when adding models or endpoints, changing business rules, or fixing a bug (write the
+  failing test first for bugs).
+
+```python
+def test_global_taxonomy_cannot_have_owner(self, db_session):
+    """Global taxonomies must not be tied to a company (scope constraint)."""
+    # Arrange
+    taxonomy = TaxonomyDefinition(scope_type=DefinitionScope.GLOBAL, owner_company_id=uuid4(), ...)
+    db_session.add(taxonomy)
+
+    # Act / Assert
+    with pytest.raises(IntegrityError):
+        db_session.flush()
+```
+
+Commands: `make test`, `make test-cov`, `pytest tests/unit -v`, `pytest -k taxonomy -v`.
+
+Required areas (taxonomy hierarchy and versions, domain kinds and scopes, company types and
+snapshot `ord` rules) and full reference: `docs/conventions/testing.md`.

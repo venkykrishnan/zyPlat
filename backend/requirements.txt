@@ -6,3 +6,7 @@ alembic==1.13.1
 pydantic==2.5.3
 pydantic-settings==2.1.0
 python-dotenv==1.0.0
+pandas==2.2.3
+pyarrow==18.1.0
+# Pinned because newer NumPy stubs use Python 3.12-only syntax that mypy (python_version 3.11) rejects.
+numpy==2.2.6

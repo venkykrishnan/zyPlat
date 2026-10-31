@@ -45,6 +45,53 @@ jobs:
       - name: Check if all quality gates passed
         run: echo "✅ All code quality checks passed!"
 
+  # Independent of code-quality on purpose: migration problems should surface even while lint
+  # or type errors are failing. Uses its own database, separate from the test suite's schema.
+  migrations:
+    name: Verify Alembic Migrations
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: zyplat
+          POSTGRES_PASSWORD: zyplat
+          POSTGRES_DB: zyplat_migrations
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+
+      - name: Verify migrations from backend/
+        env:
+          ALEMBIC_DATABASE_URL: postgresql://zyplat:zyplat@localhost:5432/zyplat_migrations
+        run: |
+          cd backend
+          test "$(alembic heads | grep -c '(head)')" = "1"
+          alembic upgrade head
+          alembic current | grep '(head)'
+          alembic downgrade base
+          alembic upgrade head
+
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -81,13 +128,6 @@ jobs:
           pip install -r backend/requirements-dev.txt
           pip install -r cli/requirements-dev.txt
       
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgresql://zyplat:zyplat@localhost:5432/zyplat_test
-        run: |
-          cd backend
-          alembic upgrade head
-      
       - name: Run tests with coverage
         env:
           DATABASE_URL: postgresql://zyplat:zyplat@localhost:5432/zyplat_test
@@ -110,7 +150,7 @@ jobs:
   deploy-gate:
     name: Deployment Gate
     runs-on: ubuntu-latest
-    needs: [code-quality, test]
+    needs: [code-quality, migrations, test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
     steps:

@@ -1,6 +1,11 @@
 # Alembic Execution Plan (V1 Bootstrap)
 
-This plan describes how to execute the draft migration in `db/alembic/versions/20261024_0001_initial_company_taxonomy_domain.py`.
+This plan describes how to execute the migrations in `backend/alembic/versions/`
+(`20261024_0001` initial schema, `20261031_0002` instance snapshot storage pointer,
+`20261031_0003` one default taxonomy version per scope).
+
+`backend/alembic` is the single Alembic directory. The older `db/alembic` copy was deleted after
+the CI `migrations` job passed on the pull request for this branch.
 
 ## 1) Objective
 
@@ -20,22 +25,19 @@ Establish a repeatable migration workflow that can:
 
 ## 3) Suggested repository structure for migration runtime
 
-The draft migration is already committed under:
+Migrations are committed under `backend/alembic/versions/`. Runtime files:
 
-- `db/alembic/versions/20261024_0001_initial_company_taxonomy_domain.py`
+- `backend/alembic.ini`
+- `backend/alembic/env.py`
+- `backend/alembic/script.py.mako`
 
-Alembic runtime templates are now committed as draft scaffolding:
+Ensure:
 
-- `db/alembic.ini`
-- `db/alembic/env.py`
-- `db/alembic/script.py.mako`
-
-If path conventions change later, update these files accordingly.
-
-During implementation bootstrap, ensure:
-
-- `script_location = db/alembic` remains set in `db/alembic.ini`
-- environment variables (`ALEMBIC_DATABASE_URL` or `DATABASE_URL`) are provided for runtime
+- `script_location = %(here)s/alembic` stays set in `backend/alembic.ini`, so Alembic works from
+  any working directory (`make db-migrate` runs from the repo root, CI from `backend/`).
+- `ALEMBIC_DATABASE_URL` or `DATABASE_URL` is provided for runtime.
+- Postgres enum columns in migrations use `postgresql.ENUM(..., create_type=False)` with explicit
+  type creation, otherwise `create_table` tries to create the type a second time.
 
 ## 4) Bootstrap steps
 
@@ -66,7 +68,7 @@ A `Makefile` now provides common migration workflow commands:
    - `make db-migrate`
 3. Validate alembic version table:
    - `SELECT * FROM alembic_version;`
-4. Confirm revision id is `20261024_0001`.
+4. Confirm revision id is `20261031_0003` (`alembic current` shows `(head)`).
 5. Run schema checks:
    - `make db-verify`
 
@@ -96,13 +98,21 @@ After migration, verify:
 
 ## 8) CI execution plan
 
-For PR checks:
+Implemented as the `migrations` job in `.github/workflows/ci.yml`. It has its own Postgres
+database, so the schema the test suite builds in `zyplat_test` is untouched, and it does not
+depend on the `code-quality` job, so migration problems surface even while lint is failing:
 
-1. Start ephemeral Postgres container.
-2. Run `upgrade head`.
-3. Run schema smoke verification SQL script.
-4. Run `downgrade -1` then `upgrade head` again.
-5. Run integration tests that rely on migrated schema.
+1. Assert exactly one head.
+2. Run `upgrade head`, then assert `alembic current` reports `(head)`.
+3. Run `downgrade base`, then `upgrade head` again.
+
+`tests/migration/` repeats these checks from both working directories, verifies the enum types
+are removed on downgrade, exercises the rules in the migrated schema directly, and compares
+nullability, check constraints, and unique constraints and indexes between migrations and the ORM
+models for `domain_instance_snapshots`, `taxonomy_definitions`, and `domain_definitions`.
+
+Not yet done: run `scripts/db/verify_schema.sql` in CI; resolve the remaining model/migration
+drift reported by `alembic check` (see `backlog.md`).
 
 ## 9) Risk controls
 
@@ -113,8 +123,6 @@ For PR checks:
 
 ## 10) Immediate next actions
 
-1. Scaffold FastAPI/SQLAlchemy project skeleton.
-2. Execute this migration on local Postgres with `make db-up` + `make db-migrate`.
-3. Run `make db-verify` and capture output in CI logs.
-4. Add migration smoke tests in CI.
+1. Run `make db-verify` and capture output in CI logs.
+2. Reconcile `alembic check` drift between models and migrations.
 

@@ -20,7 +20,7 @@ class TestCompanyAPI:
             "naics_code": "522110",
             "state": "CA",
             "report_info": [{"type": "quarterly", "frequency": 4}],
-            "metadata_": {"founded": "1985", "employees": 5000},
+            "metadata": {"founded": "1985", "employees": 5000},
         }
 
         response = client.post("/api/v1/companies", json=payload)
@@ -305,7 +305,7 @@ class TestCompanyMetadata:
             "name": "Metadata Company",
             "company_type": "LENDER",
             "description": "Test",
-            "metadata_": {
+            "metadata": {
                 "founded": "1985",
                 "employees": 5000,
                 "headquarters": "San Francisco, CA",
@@ -315,8 +315,45 @@ class TestCompanyMetadata:
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
-        assert data["metadata_"]["founded"] == "1985"
-        assert data["metadata_"]["employees"] == 5000
+        assert data["metadata"]["founded"] == "1985"
+        assert data["metadata"]["employees"] == 5000
+
+    def test_metadata_is_persisted_not_just_echoed(self, client):
+        """A fresh GET must return what was created; the create response alone proves nothing."""
+        payload = {
+            "company_id": "META002",
+            "name": "Persisted Metadata Company",
+            "company_type": "LENDER",
+            "metadata": {"founded": "1985"},
+        }
+        created = client.post("/api/v1/companies", json=payload).json()
+
+        fetched = client.get(f"/api/v1/companies/{created['id']}").json()
+
+        assert fetched["metadata"] == {"founded": "1985"}
+
+    def test_update_replaces_metadata_and_persists_it(self, client):
+        """Update must write metadata to the column, not onto the Python object."""
+        payload = {
+            "company_id": "META003",
+            "name": "Updated Metadata Company",
+            "company_type": "LENDER",
+            "metadata": {"old": True},
+        }
+        created = client.post("/api/v1/companies", json=payload).json()
+
+        client.put(f"/api/v1/companies/{created['id']}", json={"metadata": {"new": True}})
+
+        fetched = client.get(f"/api/v1/companies/{created['id']}").json()
+        assert fetched["metadata"] == {"new": True}
+
+    def test_omitted_metadata_defaults_to_empty_object(self, client):
+        """Responses must always include metadata as an object."""
+        payload = {"company_id": "META004", "name": "No Metadata", "company_type": "LENDER"}
+
+        created = client.post("/api/v1/companies", json=payload).json()
+
+        assert created["metadata"] == {}
 
 
 class TestCompanyEndToEnd:
@@ -355,7 +392,7 @@ class TestCompanyEndToEnd:
         update_payload = {
             "description": "Updated workflow test",
             "state": "NY",
-            "metadata_": {"updated": True},
+            "metadata": {"updated": True},
         }
         update_response = client.put(f"/api/v1/companies/{company_id}", json=update_payload)
         assert update_response.status_code == status.HTTP_200_OK

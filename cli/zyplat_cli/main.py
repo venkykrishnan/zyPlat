@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """zyPlat CLI - Command line interface for zyPlat"""
 
-import click
 import json
-import os
 from pathlib import Path
-from typing import Optional
+
+import click
+from rich import print as rprint
 from rich.console import Console
 from rich.table import Table
-from rich import print as rprint
 
 from .client import ZyPlatClient
 
@@ -44,16 +43,16 @@ def company():
 @click.pass_context
 def company_create(
     ctx,
-    file: Optional[str],
-    company_id: Optional[str],
-    name: Optional[str],
-    company_type: Optional[str],
+    file: str | None,
+    company_id: str | None,
+    name: str | None,
+    company_type: str | None,
 ):
     """Create a new company"""
     client = ctx.obj["client"]
 
     if file:
-        with open(file, "r") as f:
+        with open(file) as f:
             data = json.load(f)
     elif company_id and name and company_type:
         data = {
@@ -71,7 +70,7 @@ def company_create(
         rprint(result)
     except Exception as e:
         console.print(f"[red]✗[/red] Error: {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 @company.command("list")
@@ -100,7 +99,7 @@ def company_list(ctx):
         console.print(table)
     except Exception as e:
         console.print(f"[red]✗[/red] Error: {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 @cli.group()
@@ -115,13 +114,13 @@ def taxonomy():
     "--dir", "-d", type=click.Path(exists=True), help="Directory containing taxonomy files"
 )
 @click.pass_context
-def taxonomy_create(ctx, file: Optional[str], dir: Optional[str]):
+def taxonomy_create(ctx, file: str | None, dir: str | None):
     """Create taxonomy definition(s) from file or directory"""
     client = ctx.obj["client"]
 
-    files = []
+    files: list[Path]
     if file:
-        files = [file]
+        files = [Path(file)]
     elif dir:
         files = list(Path(dir).glob("*.json"))
     else:
@@ -130,7 +129,7 @@ def taxonomy_create(ctx, file: Optional[str], dir: Optional[str]):
 
     for filepath in files:
         try:
-            with open(filepath, "r") as f:
+            with open(filepath) as f:
                 data = json.load(f)
 
             # Transform legacy format to new schema
@@ -200,7 +199,7 @@ def taxonomy_list(ctx):
         console.print(table)
     except Exception as e:
         console.print(f"[red]✗[/red] Error: {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 @cli.group()
@@ -213,13 +212,13 @@ def domain():
 @click.option("--file", "-f", type=click.Path(exists=True), help="JSON file with domain data")
 @click.option("--dir", "-d", type=click.Path(exists=True), help="Directory containing domain files")
 @click.pass_context
-def domain_create(ctx, file: Optional[str], dir: Optional[str]):
+def domain_create(ctx, file: str | None, dir: str | None):
     """Create domain definition(s) from file or directory"""
     client = ctx.obj["client"]
 
-    files = []
+    files: list[Path]
     if file:
-        files = [file]
+        files = [Path(file)]
     elif dir:
         files = list(Path(dir).glob("*.json"))
     else:
@@ -228,7 +227,7 @@ def domain_create(ctx, file: Optional[str], dir: Optional[str]):
 
     for filepath in files:
         try:
-            with open(filepath, "r") as f:
+            with open(filepath) as f:
                 data = json.load(f)
 
             # Transform legacy format to new schema
@@ -272,7 +271,7 @@ def domain_list(ctx):
         console.print(table)
     except Exception as e:
         console.print(f"[red]✗[/red] Error: {e}")
-        raise click.Abort()
+        raise click.Abort() from e
 
 
 if __name__ == "__main__":

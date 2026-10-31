@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from ..core.database import get_db
-from ..schemas.company import CompanyCreate, CompanyUpdate, CompanyResponse
 from ..crud import company as crud
+from ..schemas.company import CompanyCreate, CompanyResponse, CompanyUpdate
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ def create_company(company: CompanyCreate, db: Session = Depends(get_db)):
     return crud.create_company(db, company)
 
 
-@router.get("/", response_model=List[CompanyResponse])
+@router.get("/", response_model=list[CompanyResponse])
 def list_companies(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_companies(db, skip=skip, limit=limit)
 

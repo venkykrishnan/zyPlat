@@ -8,6 +8,9 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql://zyplat:zyplat@localhost:5432/zyplat"
 
+    # Container filesystems are ephemeral; point this at a persistent volume in deployments.
+    INSTANCE_DATA_DIR: str = "./data/instance-data"
+
     class Config:
         case_sensitive = True
         env_file = ".env"

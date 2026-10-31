@@ -1,9 +1,9 @@
-from sqlalchemy.orm import Session
-from typing import List, Optional
+from datetime import UTC, datetime
 from uuid import UUID
-from datetime import datetime
 
-from ..models.taxonomy import TaxonomyDefinition, TaxonomyEntity, DefinitionScope
+from sqlalchemy.orm import Session
+
+from ..models.taxonomy import TaxonomyDefinition, TaxonomyEntity
 from ..schemas.taxonomy import (
     TaxonomyDefinitionCreate,
     TaxonomyDefinitionUpdate,
@@ -13,13 +13,13 @@ from ..schemas.taxonomy import (
 
 
 # Taxonomy Definition CRUD
-def get_taxonomy_definition(db: Session, taxonomy_id: UUID) -> Optional[TaxonomyDefinition]:
+def get_taxonomy_definition(db: Session, taxonomy_id: UUID) -> TaxonomyDefinition | None:
     return db.query(TaxonomyDefinition).filter(TaxonomyDefinition.id == taxonomy_id).first()
 
 
 def get_taxonomy_definitions(
     db: Session, skip: int = 0, limit: int = 100
-) -> List[TaxonomyDefinition]:
+) -> list[TaxonomyDefinition]:
     return db.query(TaxonomyDefinition).offset(skip).limit(limit).all()
 
 
@@ -28,7 +28,7 @@ def create_taxonomy_definition(
 ) -> TaxonomyDefinition:
     db_taxonomy = TaxonomyDefinition(**taxonomy.model_dump())
     if db_taxonomy.is_published and not db_taxonomy.published_at:
-        db_taxonomy.published_at = datetime.utcnow()
+        db_taxonomy.published_at = datetime.now(UTC)
     db.add(db_taxonomy)
     db.commit()
     db.refresh(db_taxonomy)
@@ -37,7 +37,7 @@ def create_taxonomy_definition(
 
 def update_taxonomy_definition(
     db: Session, taxonomy_id: UUID, taxonomy_update: TaxonomyDefinitionUpdate
-) -> Optional[TaxonomyDefinition]:
+) -> TaxonomyDefinition | None:
     db_taxonomy = get_taxonomy_definition(db, taxonomy_id)
     if not db_taxonomy:
         return None
@@ -49,7 +49,7 @@ def update_taxonomy_definition(
         and update_data["is_published"]
         and not db_taxonomy.published_at
     ):
-        db_taxonomy.published_at = datetime.utcnow()
+        db_taxonomy.published_at = datetime.now(UTC)
 
     for field, value in update_data.items():
         setattr(db_taxonomy, field, value)
@@ -70,13 +70,13 @@ def delete_taxonomy_definition(db: Session, taxonomy_id: UUID) -> bool:
 
 
 # Taxonomy Entity CRUD
-def get_taxonomy_entity(db: Session, entity_id: UUID) -> Optional[TaxonomyEntity]:
+def get_taxonomy_entity(db: Session, entity_id: UUID) -> TaxonomyEntity | None:
     return db.query(TaxonomyEntity).filter(TaxonomyEntity.id == entity_id).first()
 
 
 def get_taxonomy_entities_by_definition(
     db: Session, definition_id: UUID, skip: int = 0, limit: int = 1000
-) -> List[TaxonomyEntity]:
+) -> list[TaxonomyEntity]:
     return (
         db.query(TaxonomyEntity)
         .filter(TaxonomyEntity.taxonomy_definition_id == definition_id)
@@ -96,7 +96,7 @@ def create_taxonomy_entity(db: Session, entity: TaxonomyEntityCreate) -> Taxonom
 
 def update_taxonomy_entity(
     db: Session, entity_id: UUID, entity_update: TaxonomyEntityUpdate
-) -> Optional[TaxonomyEntity]:
+) -> TaxonomyEntity | None:
     db_entity = get_taxonomy_entity(db, entity_id)
     if not db_entity:
         return None

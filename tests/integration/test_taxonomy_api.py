@@ -1,7 +1,55 @@
 """Integration tests for taxonomy API endpoints."""
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from fastapi import status
+from sqlalchemy import text
+
+
+class TestTaxonomyPublishedAt:
+    """``published_at`` must be the real current instant whatever the database timezone is."""
+
+    @pytest.fixture(autouse=True)
+    def non_utc_session(self, db_session):
+        """A naive UTC timestamp is read in the session timezone, so use one far from UTC."""
+        db_session.execute(text("SET TIME ZONE 'Asia/Kolkata'"))
+
+    @staticmethod
+    def _assert_is_now(published_at: str) -> None:
+        parsed = datetime.fromisoformat(published_at)
+        assert parsed.tzinfo is not None
+        assert abs(parsed - datetime.now(UTC)) < timedelta(minutes=1)
+
+    def test_publishing_on_create_stamps_the_current_instant(self, client):
+        """Creating an already-published taxonomy sets published_at."""
+        payload = {
+            "taxonomy_id": "stampOnCreate",
+            "version": "1.0.0",
+            "scope_type": "GLOBAL",
+            "description": "Stamp on create",
+            "is_published": True,
+        }
+
+        response = client.post("/api/v1/taxonomies/definitions", json=payload)
+
+        self._assert_is_now(response.json()["published_at"])
+
+    def test_publishing_on_update_stamps_the_current_instant(self, client):
+        """Publishing a draft sets published_at."""
+        payload = {
+            "taxonomy_id": "stampOnUpdate",
+            "version": "1.0.0",
+            "scope_type": "GLOBAL",
+            "description": "Stamp on update",
+        }
+        created = client.post("/api/v1/taxonomies/definitions", json=payload).json()
+
+        response = client.put(
+            f"/api/v1/taxonomies/definitions/{created['id']}", json={"is_published": True}
+        )
+
+        self._assert_is_now(response.json()["published_at"])
 
 
 class TestTaxonomyDefinitionAPI:
@@ -145,9 +193,7 @@ class TestTaxonomyDefinitionAPI:
             "description": "Updated Description",
             "is_published": True,
         }
-        response = client.put(
-            f"/api/v1/taxonomies/definitions/{taxonomy_id}", json=update_payload
-        )
+        response = client.put(f"/api/v1/taxonomies/definitions/{taxonomy_id}", json=update_payload)
 
         assert response.status_code == status.HTTP_200_OK
         data = response.json()

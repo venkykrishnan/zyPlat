@@ -1,20 +1,20 @@
 import enum
+
 from sqlalchemy import (
-    Column,
-    String,
     Boolean,
+    CheckConstraint,
+    Column,
     DateTime,
     Enum,
     ForeignKey,
-    Integer,
-    CheckConstraint,
     Index,
+    Integer,
+    String,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func, text
-from sqlalchemy.orm import relationship
-import uuid
 
 from ..core.database import Base
 
@@ -32,7 +32,9 @@ class Company(Base):
     company_id = Column(String, nullable=False, unique=True)
     name = Column(String, nullable=False, unique=True)
     description = Column(String, nullable=False, server_default="")
-    company_type = Column(Enum(CompanyType, name="company_type"), nullable=False)
+    company_type: Mapped[CompanyType] = mapped_column(
+        Enum(CompanyType, name="company_type"), nullable=False
+    )
     customer_id = Column(String, nullable=True)
     is_enabled = Column(Boolean, nullable=False, server_default=text("TRUE"))
     is_test = Column(Boolean, nullable=False, server_default=text("FALSE"))
@@ -79,7 +81,9 @@ class CompanySnapshot(Base):
     company_id = Column(
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
     )
-    period_type = Column(Enum(PeriodGranularity, name="period_granularity"), nullable=False)
+    period_type: Mapped[PeriodGranularity] = mapped_column(
+        Enum(PeriodGranularity, name="period_granularity"), nullable=False
+    )
     period_value = Column(String, nullable=False)
     ord = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -115,7 +119,9 @@ class CompanySnapshotHead(Base):
     company_id = Column(
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True
     )
-    period_type = Column(Enum(PeriodGranularity, name="period_granularity"), primary_key=True)
+    period_type: Mapped[PeriodGranularity] = mapped_column(
+        Enum(PeriodGranularity, name="period_granularity"), primary_key=True
+    )
     period_value = Column(String, primary_key=True)
     snapshot_id = Column(
         UUID(as_uuid=True), ForeignKey("company_snapshots.id", ondelete="CASCADE"), nullable=False

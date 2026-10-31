@@ -13,8 +13,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
+# Container storage is ephemeral: mount a persistent volume at INSTANCE_DATA_DIR in production.
+ENV INSTANCE_DATA_DIR=/app/data/instance-data
 RUN useradd -m -u 1000 app && \
-    mkdir -p /app && \
+    mkdir -p /app /app/data/instance-data && \
     chown -R app:app /app
 
 WORKDIR /app

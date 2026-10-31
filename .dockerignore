@@ -20,6 +20,9 @@ env/
 *.swp
 *.swo
 
+# Local instance data files
+data/
+
 # Git
 .git/
 .gitignore

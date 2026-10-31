@@ -1,18 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
 from ..core.database import get_db
+from ..crud import taxonomy as crud
 from ..schemas.taxonomy import (
     TaxonomyDefinitionCreate,
-    TaxonomyDefinitionUpdate,
     TaxonomyDefinitionResponse,
+    TaxonomyDefinitionUpdate,
     TaxonomyEntityCreate,
-    TaxonomyEntityUpdate,
     TaxonomyEntityResponse,
+    TaxonomyEntityUpdate,
 )
-from ..crud import taxonomy as crud
 
 router = APIRouter()
 
@@ -25,7 +25,7 @@ def create_taxonomy_definition(taxonomy: TaxonomyDefinitionCreate, db: Session =
     return crud.create_taxonomy_definition(db, taxonomy)
 
 
-@router.get("/definitions", response_model=List[TaxonomyDefinitionResponse])
+@router.get("/definitions", response_model=list[TaxonomyDefinitionResponse])
 def list_taxonomy_definitions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_taxonomy_definitions(db, skip=skip, limit=limit)
 
@@ -68,7 +68,7 @@ def create_taxonomy_entity(entity: TaxonomyEntityCreate, db: Session = Depends(g
     return crud.create_taxonomy_entity(db, entity)
 
 
-@router.get("/definitions/{definition_id}/entities", response_model=List[TaxonomyEntityResponse])
+@router.get("/definitions/{definition_id}/entities", response_model=list[TaxonomyEntityResponse])
 def list_taxonomy_entities(
     definition_id: UUID, skip: int = 0, limit: int = 1000, db: Session = Depends(get_db)
 ):

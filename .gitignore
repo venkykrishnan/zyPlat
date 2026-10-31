@@ -46,3 +46,14 @@ Thumbs.db
 
 # Alembic
 backend/alembic/versions/__pycache__/
+
+# Tool caches and reports
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Local instance data files (Parquet); see docs/plans/instance-data-storage.md
+data/

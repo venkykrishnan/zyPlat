@@ -1,24 +1,24 @@
+from ..models.company import PeriodGranularity
 from .company import (
     CompanyCreate,
-    CompanyUpdate,
     CompanyResponse,
     CompanyType,
-    PeriodGranularity,
-)
-from .taxonomy import (
-    TaxonomyDefinitionCreate,
-    TaxonomyDefinitionUpdate,
-    TaxonomyDefinitionResponse,
-    TaxonomyEntityCreate,
-    TaxonomyEntityUpdate,
-    TaxonomyEntityResponse,
-    DefinitionScope,
+    CompanyUpdate,
 )
 from .domain import (
     DomainDefinitionCreate,
-    DomainDefinitionUpdate,
     DomainDefinitionResponse,
+    DomainDefinitionUpdate,
     DomainKind,
+)
+from .taxonomy import (
+    DefinitionScope,
+    TaxonomyDefinitionCreate,
+    TaxonomyDefinitionResponse,
+    TaxonomyDefinitionUpdate,
+    TaxonomyEntityCreate,
+    TaxonomyEntityResponse,
+    TaxonomyEntityUpdate,
 )
 
 __all__ = [

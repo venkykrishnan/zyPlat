@@ -7,8 +7,8 @@ Create Date: 2026-10-24 16:58:00
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -18,11 +18,19 @@ branch_labels = None
 depends_on = None
 
 
-definition_scope_enum = sa.Enum("GLOBAL", "COMPANY", name="definition_scope")
-company_type_enum = sa.Enum("LENDER", "BORROWER", "PARTICIPANT", name="company_type")
-domain_kind_enum = sa.Enum("TIME_SERIES", "SCALAR", name="domain_kind")
-period_granularity_enum = sa.Enum("YEAR", "QUARTER", "MONTH", "DATE", name="period_granularity")
-domain_dimension_data_type_enum = sa.Enum(
+# create_type=False: upgrade() creates these types explicitly, so create_table must not try to
+# create them a second time (that raises DuplicateObject on a fresh database).
+definition_scope_enum = postgresql.ENUM(
+    "GLOBAL", "COMPANY", name="definition_scope", create_type=False
+)
+company_type_enum = postgresql.ENUM(
+    "LENDER", "BORROWER", "PARTICIPANT", name="company_type", create_type=False
+)
+domain_kind_enum = postgresql.ENUM("TIME_SERIES", "SCALAR", name="domain_kind", create_type=False)
+period_granularity_enum = postgresql.ENUM(
+    "YEAR", "QUARTER", "MONTH", "DATE", name="period_granularity", create_type=False
+)
+domain_dimension_data_type_enum = postgresql.ENUM(
     "STRING",
     "NUMBER",
     "INTEGER",
@@ -32,12 +40,13 @@ domain_dimension_data_type_enum = sa.Enum(
     "ENUM",
     "ARRAY_STRING",
     name="domain_dimension_data_type",
+    create_type=False,
 )
-domain_metric_data_type_enum = sa.Enum(
-    "NUMBER", "INTEGER", "DECIMAL", name="domain_metric_data_type"
+domain_metric_data_type_enum = postgresql.ENUM(
+    "NUMBER", "INTEGER", "DECIMAL", name="domain_metric_data_type", create_type=False
 )
-taxonomy_version_strategy_enum = sa.Enum(
-    "LATEST_PUBLISHED", "PINNED", name="taxonomy_version_strategy"
+taxonomy_version_strategy_enum = postgresql.ENUM(
+    "LATEST_PUBLISHED", "PINNED", name="taxonomy_version_strategy", create_type=False
 )
 
 
@@ -70,7 +79,8 @@ def upgrade() -> None:
     ):
         enum_type.create(bind, checkfirst=True)
 
-    op.execute("""
+    op.execute(
+        """
         CREATE OR REPLACE FUNCTION set_updated_at()
         RETURNS TRIGGER AS $$
         BEGIN
@@ -78,7 +88,8 @@ def upgrade() -> None:
           RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-        """)
+        """
+    )
 
     op.create_table(
         "companies",
@@ -650,12 +661,14 @@ def upgrade() -> None:
     )
 
     for table_name in TRIGGER_TABLES:
-        op.execute(f"""
+        op.execute(
+            f"""
             CREATE TRIGGER trg_{table_name}_updated_at
             BEFORE UPDATE ON {table_name}
             FOR EACH ROW
             EXECUTE FUNCTION set_updated_at();
-            """)
+            """
+        )
 
 
 def downgrade() -> None:
