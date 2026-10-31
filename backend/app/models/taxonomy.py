@@ -1,4 +1,5 @@
 import enum
+from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
@@ -12,7 +13,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func, text
 
 from ..core.database import Base
@@ -29,17 +30,19 @@ class TaxonomyDefinition(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
     taxonomy_id = Column(String, nullable=False)
     version = Column(String, nullable=False)
-    scope_type = Column(Enum(DefinitionScope, name="definition_scope"), nullable=False)
+    scope_type: Mapped[DefinitionScope] = mapped_column(
+        Enum(DefinitionScope, name="definition_scope"), nullable=False
+    )
     owner_company_id = Column(
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True
     )
     description = Column(String, nullable=False)
     is_hierarchical = Column(Boolean, nullable=False, server_default=text("FALSE"))
-    allowed_classifications = Column(
+    allowed_classifications: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, server_default=text("'{}'::text[]")
     )
     is_published = Column(Boolean, nullable=False, server_default=text("FALSE"))
-    published_at = Column(DateTime(timezone=True), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_default = Column(Boolean, nullable=False, server_default=text("FALSE"))
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
@@ -121,7 +124,7 @@ class TaxonomyEntity(Base):
     parent_entity_id = Column(
         UUID(as_uuid=True), ForeignKey("taxonomy_entities.id", ondelete="RESTRICT"), nullable=True
     )
-    explicit_classifications = Column(
+    explicit_classifications: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, server_default=text("'{}'::text[]")
     )
     is_base_entity = Column(Boolean, nullable=False, server_default=text("TRUE"))

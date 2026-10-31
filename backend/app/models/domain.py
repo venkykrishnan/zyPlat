@@ -55,8 +55,10 @@ class DomainDefinition(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
     domain_id = Column(String, nullable=False)
     description = Column(String, nullable=False)
-    kind = Column(Enum(DomainKind, name="domain_kind"), nullable=False)
-    scope_type = Column(Enum(DefinitionScope, name="definition_scope"), nullable=False)
+    kind: Mapped[DomainKind] = mapped_column(Enum(DomainKind, name="domain_kind"), nullable=False)
+    scope_type: Mapped[DefinitionScope] = mapped_column(
+        Enum(DefinitionScope, name="definition_scope"), nullable=False
+    )
     owner_company_id = Column(
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=True
     )
@@ -113,14 +115,14 @@ class DomainDimension(Base):
     )
     name = Column(String, nullable=False)
     display_name = Column(String, nullable=False)
-    data_type = Column(
+    data_type: Mapped[DomainDimensionDataType] = mapped_column(
         Enum(DomainDimensionDataType, name="domain_dimension_data_type"), nullable=False
     )
     required = Column(Boolean, nullable=False, server_default=text("FALSE"))
     is_filter = Column(Boolean, nullable=False, server_default=text("FALSE"))
     ordinal = Column(Integer, nullable=False)
     taxonomy_id = Column(String, nullable=True)
-    taxonomy_version_strategy = Column(
+    taxonomy_version_strategy: Mapped[TaxonomyVersionStrategy | None] = mapped_column(
         Enum(TaxonomyVersionStrategy, name="taxonomy_version_strategy"), nullable=True
     )
     taxonomy_version = Column(String, nullable=True)
@@ -167,7 +169,9 @@ class DomainMetric(Base):
     )
     name = Column(String, nullable=False)
     display_name = Column(String, nullable=False)
-    data_type = Column(Enum(DomainMetricDataType, name="domain_metric_data_type"), nullable=False)
+    data_type: Mapped[DomainMetricDataType] = mapped_column(
+        Enum(DomainMetricDataType, name="domain_metric_data_type"), nullable=False
+    )
     required = Column(Boolean, nullable=False, server_default=text("FALSE"))
     ordinal = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -196,7 +200,7 @@ class DomainInstance(Base):
     company_id = Column(
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
     )
-    active_classifications = Column(
+    active_classifications: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, server_default=text("'{}'::text[]")
     )
     metadata_ = Column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb"))

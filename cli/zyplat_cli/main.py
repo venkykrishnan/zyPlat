@@ -118,9 +118,9 @@ def taxonomy_create(ctx, file: str | None, dir: str | None):
     """Create taxonomy definition(s) from file or directory"""
     client = ctx.obj["client"]
 
-    files = []
+    files: list[Path]
     if file:
-        files = [file]
+        files = [Path(file)]
     elif dir:
         files = list(Path(dir).glob("*.json"))
     else:
@@ -216,9 +216,9 @@ def domain_create(ctx, file: str | None, dir: str | None):
     """Create domain definition(s) from file or directory"""
     client = ctx.obj["client"]
 
-    files = []
+    files: list[Path]
     if file:
-        files = [file]
+        files = [Path(file)]
     elif dir:
         files = list(Path(dir).glob("*.json"))
     else:
