@@ -37,6 +37,10 @@ snapshot period (example Jul 2026) and is delineated by the bind_snapshot (5Jul2
 
 ## Use cases to be supported
 
+ 1. CRUD REST API for Application. This includes validating the company information with the company service and domain with domain apis.
+ 2. Updates to the domain & domain instances to incorporate the changes proposed in the background section above.
+ 3. CRUD REST API for application bind instances. The application and bind instances can be distinct routes.
+
 ## Steps to be taken
 
 1. Review the above descriptions
