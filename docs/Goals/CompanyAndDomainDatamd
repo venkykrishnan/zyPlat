@@ -1,0 +1,23 @@
+# Goal: Company & domains relationships based on application context
+
+## Background
+
+Currently, system has company, txonomy, domain entities/services. A domain can be a scalar or time series, domain instances are associated
+with a snapshot. Refer to the docs/plans folder on their design and implementation.
+
+In zyPlat, the goal is to have the notion of an application. An application can have one or more domains.
+A company can be enabled for applications.
+The domain instances for all the domains of a company are associated with a 
+
+## Open Questions
+
+## Use cases to be supported
+
+## Steps to be taken
+
+1. Review the above descriptions
+2. Address open questions and any other design questions to be addressed.
+3. Propose a plan and write the plan in this projects [plans](docs/plans folder). The plan needs to propose the programming language, framework, persisent store for this goal.
+4. Get my input on the the proposed plan. Then update the goal, especially the
+use cases to be supported, and the plans based on this review.
+5. Implement the plan especially with unit and integration tests.
