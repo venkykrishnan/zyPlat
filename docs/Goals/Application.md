@@ -35,6 +35,10 @@ snapshot period (example Jul 2026) and is delineated by the bind_snapshot (5Jul2
 
 ## Open Questions
 
+1. What should be the api separation between application, bind instances (should they be bind)? 
+2. Taxonomy and domains may be pre-created (ahead of an application creation). Will the application creation check if the application's domain and taxonomy already exist and if
+they do, ensure that the domains' dimensions & metrics of the existing domains are consistent with the application's requirement? If not, then application creation should fail. 
+
 ## Use cases to be supported
 
  1. CRUD REST API for Application. This includes validating the company information with the company service and domain with domain apis.
@@ -48,4 +52,6 @@ snapshot period (example Jul 2026) and is delineated by the bind_snapshot (5Jul2
 3. Propose a plan and write the plan in this projects [plans](docs/plans folder). The plan needs to propose the programming language, framework, persisent store for this goal.
 4. Get my input on the the proposed plan. Then update the goal, especially the
 use cases to be supported, and the plans based on this review.
-5. Implement the plan especially with unit and integration tests.
+5. Break the work down into manageable PRs so that they can be reviewed easily.
+6. Clearly idenitfy spearate PRs that modify current existing entities like company, taxonomy, domain and instances.
+7. Implement the plan especially with unit and integration tests.
