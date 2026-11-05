@@ -22,6 +22,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | Trim tutorial-style examples in `docs/conventions/*.md` now that tooling enforces most of them | TODO |
 | Resolve duplicate-case files in `input/domains/` (`GeneralLedger.json` vs `generalLedger.json`, `LoanPayment.json` vs `loanPayment.json`); on macOS they show as modified in git | TODO |
 | Implement taxonomy version resolution (published, default, pinned) so `InstanceDataService` can derive `allowed_values` itself instead of taking them from the caller | TODO |
+| Application lifecycle is intentionally asymmetric vs taxonomy: app-level Draft/Publish/Archive + one default version pointer (not per-version publish/default). Recorded in `docs/plans/application-service.plan.md` §4.3 / §6.2–6.3 — not a gap to close | DONE |
 | Add S3 implementation of `InstanceDataStore` (local backend loses data on Render or ECS without a persistent volume) | TODO |
 | Add orphan-file cleanup for files whose pointer never committed (see `TODO` in `services/instance_data.py`) | TODO |
 | Decide retention for superseded snapshots (older `ord` values) | TODO |

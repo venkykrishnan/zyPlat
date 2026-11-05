@@ -1,0 +1,33 @@
+---
+description: Markdown table, heading, fence, and whitespace style for zyPlat docs
+globs: "**/*.md"
+alwaysApply: false
+---
+
+# Markdown Style
+
+Follow `docs/conventions/markdown-style.md`. Editor checks come from markdownlint
+(`.markdownlint.json`).
+
+- Tables use **compact** style: `| Choice | Value |` with delimiter `| --- | --- |`.
+  Never use tight delimiters (`|---|---|`) with spaced cells (MD060).
+- One blank line before and after headings, fenced code, lists (when adjacent to other
+  content), and tables (MD022 / MD031 / MD032 / MD058).
+- ATX headings only; one `#` title per file; do not skip heading levels.
+- Fenced code always has a language tag (`python`, `bash`, `sql`, `text`, …) (MD040).
+- No trailing spaces; no consecutive blank lines; file ends with one newline.
+- Line length is not enforced (MD013 off). Prefer readable breaks, not hard wraps.
+
+```markdown
+<!-- ❌ BAD -->
+| Choice | Value |
+|---|---|
+| Language | Python 3.12 |
+
+<!-- ✅ GOOD -->
+| Choice | Value |
+| --- | --- |
+| Language | Python 3.12 |
+```
+
+Full reference: `docs/conventions/markdown-style.md`.

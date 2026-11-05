@@ -10,7 +10,13 @@ This document introduces the notion of applications along with instantiation of 
 
 An application is an entity that has a configuration of domains. THe domains should exist prior creating an application.
 A domain can be configured as an input or output entity.
-An application has a name, description and version.
+An application has a name, description and version. Versions belong to one logical
+application (`application_id`). The logical application has a **status**
+(Draft / Publish / Archive) and a **default version** pointer: creating a new version
+makes it the default; an explicit API can set default to any version; default is
+independent of status (a Draft application still has a default). `GET` by application id
+returns the default version. Bind-instance writes are allowed only when the application is
+Published.
 
 An application can be configured for multiple companies. For example,
 
@@ -42,8 +48,10 @@ they do, ensure that the domains' dimensions & metrics of the existing domains a
 ## Use cases to be supported
 
  1. CRUD REST API for Application. This includes validating the company information with the company service and domain with domain apis.
- 2. Updates to the domain & domain instances to incorporate the changes proposed in the background section above.
- 3. CRUD REST API for application bind instances. The application and bind instances can be distinct routes.
+ 2. Default version: auto-default on new version; explicit set-default; get-by-id returns the default version.
+ 3. Application lifecycle at the logical application level: Draft → Publish → Archive (and unpublish when no bind instances exist); bind-instance writes only when Published.
+ 4. Updates to the domain & domain instances to incorporate the changes proposed in the background section above.
+ 5. CRUD REST API for application bind instances. The application and bind instances can be distinct routes.
 
 ## Steps to be taken
 

@@ -15,7 +15,7 @@ Each topic has a short, glob-scoped Cursor rule in `.cursor/rules/` and a full r
 `docs/conventions/`. Update both when a convention changes.
 
 | Topic | Rule (`.cursor/rules/`) | Reference (`docs/conventions/`) |
-|---|---|---|
+| --- | --- | --- |
 | Python style, types, docstrings | `python-style.mdc` | `python-style.md` |
 | Code comments and TODOs | `code-comments.mdc` | `code-comments.md` |
 | Testing | `testing.mdc` | `testing.md` |
@@ -23,6 +23,7 @@ Each topic has a short, glob-scoped Cursor rule in `.cursor/rules/` and a full r
 | FastAPI routers | `fastapi-routers.mdc` | `framework-conventions.md` |
 | SQLAlchemy models and migrations | `sqlalchemy-models.mdc` | `framework-conventions.md` |
 | CLI (Click) | `cli-click.mdc` | `framework-conventions.md` |
+| Markdown docs and tables | `markdown-style.mdc` | `markdown-style.md` |
 
 ## Technology baseline (current plan)
 
@@ -173,4 +174,3 @@ When changing architecture-critical behavior:
 3. update this `AGENTS.md` if core conventions changed
 4. update the matching rule in `.cursor/rules/` and reference in `docs/conventions/` if a
    language, testing, or framework convention changed
-

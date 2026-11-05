@@ -28,7 +28,7 @@ Out of scope for this goal:
 Stay on the current zyPlat stack. Do not introduce a second language or store.
 
 | Choice | Value |
-|---|---|
+| --- | --- |
 | Language | Python 3.12 (CI is still 3.11; tracked in `docs/plans/backlog.md`) |
 | Web framework | FastAPI |
 | Store | PostgreSQL (same database as company, taxonomy, domain) |
@@ -93,7 +93,7 @@ Bind instance (the July 2026 view)
 Keep them as **distinct route trees**. Use the noun `bind-instance`, not `bind`.
 
 | Resource | Base path |
-|---|---|
+| --- | --- |
 | Application definition | `/api/v1/applications` |
 | Domain config on an application | `/api/v1/applications/{applicationId}/versions/{version}/domains` |
 | Company enablement | `/api/v1/applications/{applicationId}/versions/{version}/companies` |
@@ -103,7 +103,8 @@ Company enablement is configuration of the application. Bind instances are runti
 should not be mixed into `POST /applications`.
 
 Path ids use the logical `application_id` + `version` (same pattern as taxonomies), not the
-row UUID, except where list filters need the UUID.
+row UUID, except where list filters need the UUID. `GET /applications/{applicationId}`
+(no version) resolves the logical app’s **default** version.
 
 ### 4.2 Does application create check existing domains and taxonomies?
 
@@ -131,25 +132,29 @@ does not store a second copy of dimensions and metrics.
 ### 4.3 Additional design questions
 
 | Question | Proposed answer |
-|---|---|
-| Is an application versioned like a taxonomy? | `version` is part of identity: unique `(application_id, version)`. No publish/default workflow in this goal. |
+| --- | --- |
+| Is an application versioned like a taxonomy? | Logical id `application_id` plus version rows. Unlike taxonomy, **status (Draft/Publish/Archive) is on the logical application**, not on each version. **Default** is a single version pointer on the logical app (`default_version_id`). See §6.2–6.3. |
+| How does default version work? | Creating a new version **auto-sets it as default** (newest `created_at`). Explicit `POST .../set-default` can point at any existing version. Default is **independent of status** (a Draft app still has a default). `GET /applications/{applicationId}` returns the default version. |
 | Global vs company-owned applications? | Applications are **global**. Companies are enabled on a version. Domain refs may still point at company-scoped domains when the owner is explicit. |
-| Can a domain be both input and output in one application? | No. One row per `(application, domain)` with role `INPUT` or `OUTPUT`. |
+| Can a domain be both input and output in one application? | No. One row per `(application version, domain)` with role `INPUT` or `OUTPUT`. |
 | Must every application domain have a company domain instance at bind time? | Company-tied `INPUT` domains need exactly one snapshot for that company snapshot. Independent `INPUT` domains contribute **every** snapshot whose own period is contained in the company snapshot (three BBC dates in July). `OUTPUT` members may be omitted and attached later. |
-| Do BBC dates need two files under one company snapshot? | **No.** BBC snapshots are not keyed by company snapshot. Each BBC date is its own snapshot of the one BBC domain instance. See §6.8. |
+| Do BBC dates need two files under one company snapshot? | **No.** BBC snapshots are not keyed by company snapshot. Each BBC date is its own snapshot of the one BBC domain instance. See §6.9. |
 | Must every row’s time-series value equal the company snapshot period? | No. Snapshot period is as-of; the time-series field is the row period. Validation is format/alignment only. |
 | What is `bind_snapshot` stored as? | Not a column on the bind instance. The bind instance is identified by the **company snapshot** (the view). Independent domains carry their own snapshot period (`DATE 2026-07-05`) on `domain_instance_snapshots`. |
 | How does a July view pick BBC rows? | Containment: include independent snapshots whose period falls inside the company snapshot period (`2026-07-05` ⊂ `MONTH 2026-07`). |
 | CLI in this goal? | Yes, after the REST APIs, as a follow-on PR. |
 | New module layout? | New `application` code lives under `backend/app/modules/application/` (router, service, repository, schemas, models, exceptions). It calls existing company and domain layers. Do not migrate old modules in these PRs. |
+| Asymmetry vs taxonomy publish/default? | **Intentional.** Taxonomy keeps publish/default **per version**. Applications use **app-level status** + **one default version pointer**. Do not force applications to match taxonomy’s model. |
 
 ## 5) Use cases this plan covers
 
 1. CRUD REST API for applications, including validation against company and domain APIs/services.
-2. Domain (and instance-import) changes for the time-series field and period-type validation.
-3. CRUD REST API for bind instances on distinct routes.
-4. Enabling companies on an application version.
-5. Unit and integration tests for the rules above.
+2. Default version: auto-default on new version; explicit set-default; `GET` by `applicationId` returns the default version (independent of Draft/Publish/Archive).
+3. Application lifecycle: Draft → Publish → Archive (and unpublish when safe); bind-instance writes only when Published.
+4. Domain (and instance-import) changes for the time-series field and period-type validation.
+5. CRUD REST API for bind instances on distinct routes.
+6. Enabling companies on an application version.
+7. Unit and integration tests for the rules above.
 
 ## 6) Proposed model
 
@@ -157,41 +162,87 @@ does not store a second copy of dimensions and metrics.
 
 ```sql
 CREATE TYPE application_domain_role AS ENUM ('INPUT', 'OUTPUT');
+CREATE TYPE application_status AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED');
 ```
 
 Reuse `period_granularity` (`YEAR`, `QUARTER`, `MONTH`, `DATE`).
 
-### 6.2 applications
+### 6.2 applications (logical app)
+
+Status and default live on the logical application, not on each version.
 
 ```text
 applications
   id UUID PK
-  application_id TEXT NOT NULL          -- logical id, e.g. LoanMonitoring
+  application_id TEXT NOT NULL UNIQUE   -- logical id, e.g. LoanMonitoring
+  status application_status NOT NULL DEFAULT 'DRAFT'
+  default_version_id UUID NULL FK application_versions(id)
+  created_at, updated_at
+  CHECK length(trim(application_id)) > 0
+```
+
+- First create of an `application_id` starts in `DRAFT`.
+- `default_version_id` is the single default (at most one). Service rule: it always points at a
+  version of this same application. Nullable only before the first version row exists in the
+  same create transaction.
+- Different applications use different `application_id`s.
+
+### 6.3 application_versions
+
+```text
+application_versions
+  id UUID PK
+  application_id UUID NOT NULL FK applications(id) ON DELETE CASCADE
   version TEXT NOT NULL                 -- e.g. 1.0.0
   name TEXT NOT NULL
   description TEXT NOT NULL DEFAULT ''
   created_at, updated_at
   UNIQUE (application_id, version)
-  CHECK length(trim(application_id)) > 0
   CHECK length(trim(version)) > 0
   CHECK length(trim(name)) > 0
 ```
 
-`name` is not globally unique across versions of the same application. Different applications
-should still use different `application_id`s.
+`name` is not globally unique across versions of the same application.
 
-### 6.3 application_domains
+On insert of a version: in one transaction, insert the version row and set
+`applications.default_version_id` to that new row (auto-default). “Most recent” means newest
+`created_at`. Explicit set-default may point at any existing version of the same application.
+
+#### Lifecycle write rules
+
+```text
+DRAFT ──publish──► PUBLISHED ──archive──► ARCHIVED
+  ▲                    │
+  └────unpublish───────┘
+```
+
+| Status | Config / versions / default / company enablement | Bind instances |
+| --- | --- | --- |
+| `DRAFT` | Allowed | Create/update **forbidden** |
+| `PUBLISHED` | Allowed (new version still auto-defaults) | Create/update **allowed** |
+| `ARCHIVED` | **Forbidden** (read-only) | Create/update **forbidden**; existing rows remain readable |
+
+- `unpublish` (Published → Draft) is allowed only when no bind instances exist for **any**
+  version of that application (otherwise `ConflictError`). Archive is the freeze path when
+  bind data already exists.
+- Reads (get app, list versions, get bind instances) work in all states.
+- Default may be a Draft application’s version; status does not clear or require a published
+  default.
+
+### 6.4 application_domains
+
+Child config tables FK to **`application_versions.id`** (version-scoped config).
 
 ```text
 application_domains
   id UUID PK
-  application_id UUID NOT NULL FK applications(id) ON DELETE CASCADE
+  application_version_id UUID NOT NULL FK application_versions(id) ON DELETE CASCADE
   domain_definition_id UUID NOT NULL FK domain_definitions(id) ON DELETE RESTRICT
   role application_domain_role NOT NULL
   snapshot_alignment ENUM ('COMPANY', 'INDEPENDENT') NOT NULL
   schema_hash VARCHAR(64) NOT NULL      -- hash of the expected subset accepted at write time
   created_at, updated_at
-  UNIQUE (application_id, domain_definition_id)
+  UNIQUE (application_version_id, domain_definition_id)
 ```
 
 Delete of a domain is restricted while an application references it.
@@ -203,39 +254,40 @@ While bind instances exist for that application version, the domain set is immut
 **adding** an `OUTPUT` domain. Removing a domain, changing a role, or changing an `INPUT`
 domain is a `ConflictError`.
 
-### 6.4 application_companies
+### 6.5 application_companies
 
 ```text
 application_companies
-  application_id UUID NOT NULL FK applications(id) ON DELETE CASCADE
+  application_version_id UUID NOT NULL FK application_versions(id) ON DELETE CASCADE
   company_id UUID NOT NULL FK companies(id) ON DELETE CASCADE
   created_at
-  PRIMARY KEY (application_id, company_id)
+  PRIMARY KEY (application_version_id, company_id)
 ```
 
 Enabling a company requires the company to exist. It does not create domain instances.
 
-### 6.5 application_bind_instances
+### 6.6 application_bind_instances
 
 ```text
 application_bind_instances
   id UUID PK
-  application_id UUID NOT NULL FK applications(id) ON DELETE RESTRICT
+  application_version_id UUID NOT NULL FK application_versions(id) ON DELETE RESTRICT
   company_id UUID NOT NULL FK companies(id) ON DELETE CASCADE
   company_snapshot_id UUID NOT NULL FK company_snapshots(id) ON DELETE RESTRICT
   created_at, updated_at
-  UNIQUE (application_id, company_id, company_snapshot_id)
+  UNIQUE (application_version_id, company_id, company_snapshot_id)
 ```
 
 Constraints (service + DB):
 
-- `(application_id, company_id)` must exist in `application_companies`.
+- `(application_version_id, company_id)` must exist in `application_companies`.
 - `company_snapshots.company_id` must equal `company_id`.
+- Create/update of bind instances requires the **logical** application `status = PUBLISHED`.
 
 There is **no bind period** on this row. One bind instance is the July 2026 view, not one row
 per BBC date.
 
-### 6.6 application_bind_instance_members
+### 6.7 application_bind_instance_members
 
 ```text
 application_bind_instance_members
@@ -251,7 +303,7 @@ dates in July).
 
 Rules:
 
-- `domain_definition_id` must be in `application_domains` for that application.
+- `domain_definition_id` must be in `application_domains` for that application version.
 - The snapshot’s domain instance must be that domain for this company.
 - If alignment is `COMPANY`, the snapshot’s `company_snapshot_id` must equal the bind instance’s
   company snapshot, and there is exactly one member for that domain (for `INPUT`).
@@ -260,7 +312,7 @@ Rules:
   time are members (the July view includes 5, 15, and 26 July).
 - `OUTPUT` members may be omitted and attached later.
 
-### 6.7 Domain changes (existing entity)
+### 6.8 Domain changes (existing entity)
 
 On `domain_dimensions`:
 
@@ -286,7 +338,7 @@ domain row):
 `dateTimeScope` in fixture JSON maps to `period_type` as:
 
 | Fixture `dateTimeScope` | `period_type` |
-|---|---|
+| --- | --- |
 | (none / omitted) | not a time-series field |
 | `Year` | `YEAR` |
 | `Quarter` | `QUARTER` |
@@ -296,7 +348,7 @@ domain row):
 For Loan Payment, `period` (`MonthYear`) is the time-series field; `dueDate` and `paidDate` stay
 ordinary `DATETIME` dimensions.
 
-### 6.8 Domain-instance snapshot changes (existing entity)
+### 6.9 Domain-instance snapshot changes (existing entity)
 
 Today `company_snapshot_id` is required and uniqueness is `(domain_instance_id, company_snapshot_id)`.
 That fits GL and loans. It does not fit BBC, which must be writable with no July company snapshot
@@ -326,7 +378,7 @@ company-tied.
 
 Parquet keys already use surrogate ids, so the file path does not encode period.
 
-### 6.9 Import validation of the time-series field
+### 6.10 Import validation of the time-series field
 
 When writing a TIME_SERIES frame (`InstanceDataService` / `validate_frame`):
 
@@ -336,7 +388,7 @@ When writing a TIME_SERIES frame (`InstanceDataService` / `validate_frame`):
    period:
 
 | `period_type` | Canonical value |
-|---|---|
+| --- | --- |
 | `YEAR` | `{year}-01-01T00:00:00Z` |
 | `QUARTER` | first day of Q1/Q2/Q3/Q4 at `00:00:00Z` |
 | `MONTH` | `{year}-{month}-01T00:00:00Z` |
@@ -352,11 +404,25 @@ Base path remains `/api/v1`. New application routes use typed service exceptions
 
 ### 7.1 Applications
 
-- `POST /applications`
-- `GET /applications` — query: `application_id`
-- `GET /applications/{applicationId}/versions/{version}`
+- `POST /applications` — create logical app (if new) + first version; status `DRAFT`; that
+  version becomes default
+- `GET /applications` — query: `application_id`, `status`
+- `GET /applications/{applicationId}` — resolve logical app; return **default version**
+  payload plus `status`
+- `GET /applications/{applicationId}/versions/{version}` — exact version
+- `POST /applications/{applicationId}/versions` — add version; **auto-set as default**
 - `PUT /applications/{applicationId}/versions/{version}` — `name`, `description` only
-- `DELETE /applications/{applicationId}/versions/{version}` — conflict if bind instances exist
+  (forbidden when logical app is `ARCHIVED`)
+- `DELETE /applications/{applicationId}/versions/{version}` — conflict if bind instances
+  exist or if it is the only / current default without a replacement path
+- `POST /applications/{applicationId}/set-default` — body `{ "version": "2" }`; one default
+- `POST /applications/{applicationId}/publish` — `DRAFT` → `PUBLISHED`
+- `POST /applications/{applicationId}/unpublish` — `PUBLISHED` → `DRAFT` if no bind
+  instances for any version; otherwise `ConflictError`
+- `POST /applications/{applicationId}/archive` — → `ARCHIVED`
+
+List/version responses may include `status` (on the logical app) and `is_default` on each
+version.
 
 Create body (illustrative):
 
@@ -402,6 +468,8 @@ Create body (illustrative):
   bind instances exist for that company
 
 ### 7.4 Bind instances
+
+Service checks the **logical** application `status == PUBLISHED` before create/update.
 
 - `POST /applications/{applicationId}/versions/{version}/bind-instances`
 - `GET /applications/{applicationId}/versions/{version}/bind-instances`
@@ -449,9 +517,9 @@ one request with its time-series field.
 ## 8) Validation summary
 
 | Layer | Rules |
-|---|---|
-| DB | Uniqueness, FKs, period regex, time-series column pairing, at most one time-series dimension |
-| Service | Exactly one time-series dimension on TIME_SERIES domains; expected schema subset; taxonomy published; company enabled; company-tied vs independent member rules; independent snapshot period contained in company snapshot; snapshot ownership |
+| --- | --- |
+| DB | Uniqueness, FKs, period regex, time-series column pairing, at most one time-series dimension; one `default_version_id` on logical app |
+| Service | Lifecycle transitions; bind writes only when `PUBLISHED`; auto-default on new version; set-default ownership; exactly one time-series dimension on TIME_SERIES domains; expected schema subset; taxonomy published; company enabled; company-tied vs independent member rules; independent snapshot period contained in company snapshot; snapshot ownership |
 | Import | Time-series column present, UTC midnight, aligned to `period_type` |
 
 Error mapping stays the existing taxonomy: `NotFoundError` 404, `ConflictError` 409,
@@ -463,6 +531,10 @@ Minimum coverage (counts toward the 80% CI gate):
 
 - Application create success; fail on missing domain; fail on kind mismatch; fail on missing
   time-series field; fail on dimension type mismatch; extra domain fields allowed.
+- Create starts in `DRAFT`; new version auto-becomes default; `GET` by id returns default;
+  set-default switches pointer; default may remain while status is `DRAFT`.
+- Publish / unpublish / archive transitions; unpublish with existing binds is 409; bind create
+  in `DRAFT` or `ARCHIVED` is 409/422; bind create in `PUBLISHED` succeeds.
 - Taxonomy-backed expected dimension fails when taxonomy is missing or unpublished.
 - Duplicate `(application_id, version)` is 409.
 - Enable unknown company is 404; disable company with bind instances is 409.
@@ -481,10 +553,10 @@ Minimum coverage (counts toward the 80% CI gate):
 Small, reviewable PRs. PRs that **modify existing entities** are called out.
 
 | PR | Touches existing entities? | Contents |
-|---|---|---|
+| --- | --- | --- |
 | **PR 1 — Time-series dimension** | **Yes: `domain_dimensions`, instance-data validation** | Alembic: `is_time_series`, `period_type`, checks, partial unique index. Model + dimension create/update API (or nested domain create). `validate_frame` period alignment. Unit/integration tests. Update `taxonomy-domain-v1-schema.md` §6.2 and `taxonomy-domain-service.plan.md` §3.4. Fixture mapping note for `dateTimeScope`. |
 | **PR 2 — Company snapshot API** | **Yes: exposes existing `company_snapshots` / heads** | CRUD + default resolution as already specified in `taxonomy-domain-service.plan.md` §5.0. Prerequisite for bind instances. Tests for `ord` and period regex. This is already on the backlog; do it here because bind instances depend on it. |
-| **PR 3 — Application definition** | No (new tables only; reads company/domain) | `applications`, `application_domains`, `application_companies`. Module under `backend/app/modules/application/`. REST CRUD + company enablement + expected-schema validation. Tests. Update `AGENTS.md` V1 service list. |
+| **PR 3 — Application definition** | No (new tables only; reads company/domain) | `applications` (logical: status, `default_version_id`), `application_versions`, `application_domains`, `application_companies`. Module under `backend/app/modules/application/`. REST CRUD + lifecycle (publish/unpublish/archive/set-default) + company enablement + expected-schema validation. Tests. Update `AGENTS.md` V1 service list. |
 | **PR 4 — Bind instances** | **Yes: `domain_instance_snapshots.company_snapshot_id` becomes nullable; independent snapshot period columns** | Snapshot migration (nullable FK, partial unique indexes). `application_bind_instances` + members (many snapshots per independent domain). Bind-instance REST and July-view containment. Tests for BBC dates 5/15/26 plus GL/Revolver for `MONTH 2026-07`. Update schema docs §7.2. |
 | **PR 5 — CLI + goal close-out** | No | Click commands for applications, enablement, bind instances. Refresh `docs/Goals/Application.md` use cases from the reviewed plan. |
 
@@ -501,7 +573,7 @@ Per `AGENTS.md`, each architecture PR updates:
 1. `docs/plans/taxonomy-domain-service.plan.md` — time-series field, nullable company snapshot on instance snapshots
 2. `docs/plans/taxonomy-domain-v1-schema.md` — new columns/tables
 3. `AGENTS.md` — add `application` to V1 services (PR 3)
-4. `docs/Goals/Application.md` — record decided answers (after this review)
+4. `docs/Goals/Application.md` — use cases for default version and lifecycle (updated with this plan revision); record remaining decided answers after review
 5. `docs/plans/backlog.md` — mark snapshot API done when PR 2 lands
 
 ## 12) What this plan needs from you
@@ -511,13 +583,16 @@ Please confirm or correct:
 1. Route split and the name `bind-instance` (§4.1).
 2. Application create validates a **required subset** of the live domain schema and does not
    create domains (§4.2).
-3. Applications are global, identity is `(application_id, version)` (§4.3).
+3. Applications are global; logical `application_id` + version rows; **status on the logical
+   app**; **default version pointer** with auto-default on create and explicit set-default;
+   `GET` by id returns default (§4.3, §6.2–6.3, §7.1).
 4. BBC-like domains are `INDEPENDENT`: snapshots have their own date period and
-   `company_snapshot_id` is null. Company-tied domains stay 1:1 with the company snapshot (§6.8).
+   `company_snapshot_id` is null. Company-tied domains stay 1:1 with the company snapshot (§6.9).
 5. A bind instance is one July 2026 view: one GL/Revolver/TermLoan snapshot plus **all** BBC
-   dates contained in that month — not one bind instance per BBC date (§3, §6.5).
+   dates contained in that month — not one bind instance per BBC date (§3, §6.6). Bind writes
+   require `PUBLISHED` (§6.3, §7.4).
 6. Time-series field is `is_time_series` + `period_type` on a `DATETIME` dimension; import
-   values must be UTC midnight at period start (§6.7–6.9).
+   values must be UTC midnight at period start (§6.8–6.10).
 7. PR split, especially keeping domain and snapshot-alignment changes in their own PRs (§10).
 8. Anything missing from the use cases (CLI, OUTPUT-only attach, schema_hash drift detection).
 )
