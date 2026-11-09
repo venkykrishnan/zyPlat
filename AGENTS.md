@@ -12,7 +12,9 @@ This document defines implementation conventions for `zyPlat`.
 ## Conventions index
 
 Each topic has a short, glob-scoped Cursor rule in `.cursor/rules/` and a full reference in
-`docs/conventions/`. Update both when a convention changes.
+`docs/conventions/`. Update both when a convention changes. See
+`docs/conventions/README.md` for which conventions are repo-specific and which could be shared
+with future repositories.
 
 | Topic | Rule (`.cursor/rules/`) | Reference (`docs/conventions/`) |
 | --- | --- | --- |
