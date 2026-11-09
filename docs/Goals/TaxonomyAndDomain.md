@@ -53,3 +53,7 @@ data (from ciqFE) need?
 4. Get my input on the the proposed plan. Then update the goal, especially the
 use cases to be supported, and the plans based on this review.
 5. Implement the plan especially with unit and integration tests.
+
+## Status
+
+The review and proposal is [docs/plans/taxonomy-domain-service.md](../plans/taxonomy-domain-service.md). ciqFE is not readable by this agent yet, so that document does not set schemas, a language, or a store. A service that was written before the review was removed. Implementation waits on step 4.
