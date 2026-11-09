@@ -146,13 +146,18 @@ Notes:
 - `taxonomy_id` (nullable string when taxonomy-backed)
 - `taxonomy_version_strategy` (nullable enum: `LATEST_PUBLISHED` | `PINNED`)
 - `taxonomy_version` (nullable string; required if strategy=PINNED)
+- `is_time_series` (bool, default false) — marks the single time-series period column
+- `period_type` (nullable enum: YEAR | QUARTER | MONTH | DATE; required when `is_time_series`)
 - `created_at`, `updated_at`
 
 Constraints:
 
 - unique: `(domain_definition_id, name)`
+- at most one `is_time_series = TRUE` dimension per domain definition
+- `is_time_series = TRUE` requires `period_type` and `data_type = DATETIME`
 - taxonomy-backed dimensions require taxonomy reference fields.
 - taxonomy-backed dimensions must resolve to published taxonomy version.
+- TIME_SERIES import values must be UTC midnight at the start of `period_type` (see application plan §6.8–6.10).
 
 ## 3.5 Domain metrics
 
@@ -212,19 +217,23 @@ Default rule:
 
 - `id` (UUID, PK)
 - `domain_instance_id` (FK)
-- `company_snapshot_id` (FK -> company_snapshots.id, required)
+- `company_snapshot_id` (FK -> company_snapshots.id, nullable)
+- `snapshot_period_type` / `snapshot_period_value` (nullable; used when independent of company snapshot)
 - `storage_uri`, `row_count`, `schema_hash`, `checksum` (nullable; set together when a TIME_SERIES snapshot's file is written)
 - `calc_run_id` (nullable; producing calculation run)
 - `created_at`, `updated_at`
 
 Constraints:
 
-- unique: `(domain_instance_id, company_snapshot_id)`
+- company-tied: `company_snapshot_id` NOT NULL and unique `(domain_instance_id, company_snapshot_id)`
+- independent: `company_snapshot_id` NULL with unique `(domain_instance_id, snapshot_period_type, snapshot_period_value)`
+- alignment check: exactly one of company-tied vs independent period fields
 - unique: `storage_uri`
 - storage pointer columns are all-or-nothing; `row_count >= 0`
 
 TIME_SERIES snapshot rows are stored as one immutable Parquet file per snapshot, not in Postgres.
-See `instance-data-storage.md`.
+See `instance-data-storage.md`. Independent snapshots support application bind instances with
+`snapshot_alignment = INDEPENDENT` (BBC-style date periods inside a company month view).
 
 ## 3.9 Domain-instance entities
 

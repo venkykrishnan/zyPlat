@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api import company, domain, taxonomy
+from .api.error_handlers import register_error_handlers
 from .core.config import settings
+from .modules.application.router import router as application_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -18,9 +20,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+register_error_handlers(app)
+
 app.include_router(company.router, prefix=f"{settings.API_V1_STR}/companies", tags=["companies"])
 app.include_router(taxonomy.router, prefix=f"{settings.API_V1_STR}/taxonomies", tags=["taxonomies"])
 app.include_router(domain.router, prefix=f"{settings.API_V1_STR}/domains", tags=["domains"])
+app.include_router(
+    application_router,
+    prefix=f"{settings.API_V1_STR}/applications",
+    tags=["applications"],
+)
 
 
 @app.get("/health")

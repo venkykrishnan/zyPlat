@@ -4,11 +4,11 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 
 | Item | Status |
 |---|---|
-| Add API routes, CRUD, and schemas for company snapshots and snapshot heads (ordinal `ord` logic, default resolution) | TODO |
+| Add API routes, CRUD, and schemas for company snapshots and snapshot heads (ordinal `ord` logic, default resolution) | DONE |
 | Add API routes, CRUD, and schemas for domain dimensions and metrics | TODO |
 | Add API routes, CRUD, and schemas for domain instances and snapshots, including endpoints that call `InstanceDataService` to write and read TIME_SERIES frames | TODO |
 | Add CLI commands for domain instances | TODO |
-| Add central error handler (`api/error_handlers.py`) mapping the typed exceptions in `core/exceptions.py` to a stable response shape with request id (exceptions exist; handler does not) | TODO |
+| Add central error handler (`api/error_handlers.py`) mapping the typed exceptions in `core/exceptions.py` to a stable response shape with request id (exceptions exist; handler does not) | DONE |
 | Add structured JSON logging with `request_id` middleware | TODO |
 | Move business rules out of routers into a service layer (routers currently raise `HTTPException`; `services/instance_data.py` is the first service) | TODO |
 | Align code layout with `AGENTS.md` module structure (`modules/<name>/...`) | TODO |
@@ -23,6 +23,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | Resolve duplicate-case files in `input/domains/` (`GeneralLedger.json` vs `generalLedger.json`, `LoanPayment.json` vs `loanPayment.json`); on macOS they show as modified in git | TODO |
 | Implement taxonomy version resolution (published, default, pinned) so `InstanceDataService` can derive `allowed_values` itself instead of taking them from the caller | TODO |
 | Application lifecycle is intentionally asymmetric vs taxonomy: app-level Draft/Publish/Archive + one default version pointer (not per-version publish/default). Recorded in `docs/plans/application-service.plan.md` §4.3 / §6.2–6.3 — not a gap to close | DONE |
+| Implement application service (time-series dimension, company snapshot API, application module + lifecycle, independent snapshots + bind instances, CLI) per `application-service.plan.md` | DONE |
 | Add S3 implementation of `InstanceDataStore` (local backend loses data on Render or ECS without a persistent volume) | TODO |
 | Add orphan-file cleanup for files whose pointer never committed (see `TODO` in `services/instance_data.py`) | TODO |
 | Decide retention for superseded snapshots (older `ord` values) | TODO |

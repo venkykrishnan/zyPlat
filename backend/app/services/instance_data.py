@@ -92,6 +92,12 @@ class InstanceDataService:
                 f"Domain '{definition.domain_id}' is {definition.kind.value}; only TIME_SERIES "
                 "domains store instance data as files."
             )
+        time_series_dims = [d for d in definition.dimensions if d.is_time_series]
+        if len(time_series_dims) != 1:
+            raise ValidationError(
+                f"Domain '{definition.domain_id}' must have exactly one time-series dimension "
+                f"before instance data can be written; found {len(time_series_dims)}."
+            )
         if snapshot.storage_uri is not None:
             raise ConflictError(
                 f"Snapshot {snapshot_id} already has data; create a new snapshot to correct it."

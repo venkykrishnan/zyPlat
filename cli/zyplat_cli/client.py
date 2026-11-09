@@ -67,6 +67,35 @@ class ZyPlatClient:
     def get_domain_definition(self, domain_id: str) -> dict[str, Any]:
         return self._object("GET", f"/domains/{domain_id}")
 
+    # Application operations
+    def create_application(self, data: dict[str, Any]) -> dict[str, Any]:
+        return self._object("POST", "/applications", json=data)
+
+    def list_applications(self) -> list[dict[str, Any]]:
+        return self._list("GET", "/applications")
+
+    def get_application(self, application_id: str) -> dict[str, Any]:
+        return self._object("GET", f"/applications/{application_id}")
+
+    def publish_application(self, application_id: str) -> dict[str, Any]:
+        return self._object("POST", f"/applications/{application_id}/publish")
+
+    def enable_application_company(
+        self, application_id: str, version: str, company_id: str
+    ) -> dict[str, Any]:
+        return self._object(
+            "PUT", f"/applications/{application_id}/versions/{version}/companies/{company_id}"
+        )
+
+    def create_bind_instance(
+        self, application_id: str, version: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._object(
+            "POST",
+            f"/applications/{application_id}/versions/{version}/bind-instances",
+            json=data,
+        )
+
     # Import operations
     def import_from_file(self, file_path: str, entity_type: str) -> dict[str, Any]:
         with open(file_path) as f:

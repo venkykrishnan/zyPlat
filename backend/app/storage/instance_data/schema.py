@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 
+from ...models.company import PeriodGranularity
 from ...models.domain import DomainDimensionDataType, DomainMetricDataType
 
 if TYPE_CHECKING:
@@ -55,6 +56,8 @@ class ColumnSpec:
     kind: ColumnKind
     data_type: DomainDimensionDataType | DomainMetricDataType
     required: bool
+    is_time_series: bool = False
+    period_type: PeriodGranularity | None = None
 
     @property
     def arrow_type(self) -> pa.DataType:
@@ -80,7 +83,14 @@ class FrameSpec:
         dimensions = sorted(definition.dimensions, key=lambda d: d.ordinal)
         metrics = sorted(definition.metrics, key=lambda m: m.ordinal)
         columns = [
-            ColumnSpec(d.name, ColumnKind.DIMENSION, d.data_type, bool(d.required))
+            ColumnSpec(
+                d.name,
+                ColumnKind.DIMENSION,
+                d.data_type,
+                bool(d.required) or bool(d.is_time_series),
+                is_time_series=bool(d.is_time_series),
+                period_type=d.period_type,
+            )
             for d in dimensions
         ] + [ColumnSpec(m.name, ColumnKind.METRIC, m.data_type, bool(m.required)) for m in metrics]
         return cls(domain_id=str(definition.domain_id), columns=tuple(columns))

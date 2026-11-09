@@ -33,7 +33,12 @@ ENUM_TYPES = {
     "domain_dimension_data_type",
     "domain_metric_data_type",
     "period_granularity",
+    "application_status",
+    "application_domain_role",
+    "snapshot_alignment",
 }
+APPLICATION_TABLE = "applications"
+DIMENSIONS_TABLE = "domain_dimensions"
 
 
 def _base_url() -> URL:
@@ -167,7 +172,8 @@ class TestDowngrade:
         """Reversing 0003 swaps the two per-scope indexes back for the original single one."""
         run_alembic(scratch_db, "upgrade", "head")
 
-        run_alembic(scratch_db, "downgrade", "-1")
+        # Target the revision before 0003 explicitly; head is now past 0003.
+        run_alembic(scratch_db, "downgrade", "20261031_0002")
 
         names = _index_names(scratch_engine, TAXONOMY_TABLE)
         assert "uq_taxonomy_default_per_scope" in names
@@ -238,7 +244,10 @@ class TestMigratedSchemaEnforcesRules:
         assert "have several default versions: ['tax']" in result.stderr
 
 
-@pytest.mark.parametrize("table", [SNAPSHOTS_TABLE, TAXONOMY_TABLE, DOMAIN_TABLE])
+@pytest.mark.parametrize(
+    "table",
+    [SNAPSHOTS_TABLE, TAXONOMY_TABLE, DOMAIN_TABLE, APPLICATION_TABLE, DIMENSIONS_TABLE],
+)
 class TestModelsMatchMigrations:
     """Guard tables against drift between ORM models and migrations.
 

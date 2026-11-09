@@ -9,6 +9,11 @@ from ..schemas.domain import (
     DomainDefinitionCreate,
     DomainDefinitionResponse,
     DomainDefinitionUpdate,
+    DomainDimensionCreate,
+    DomainDimensionResponse,
+    DomainDimensionUpdate,
+    DomainMetricCreate,
+    DomainMetricResponse,
 )
 
 router = APIRouter()
@@ -52,3 +57,45 @@ def delete_domain_definition(domain_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Domain definition not found"
         )
+
+
+@router.post(
+    "/{domain_id}/dimensions",
+    response_model=DomainDimensionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_domain_dimension(
+    domain_id: UUID, dimension: DomainDimensionCreate, db: Session = Depends(get_db)
+):
+    return crud.add_domain_dimension(db, domain_id, dimension)
+
+
+@router.get("/{domain_id}/dimensions", response_model=list[DomainDimensionResponse])
+def list_domain_dimensions(domain_id: UUID, db: Session = Depends(get_db)):
+    return crud.list_domain_dimensions(db, domain_id)
+
+
+@router.put("/{domain_id}/dimensions/{dimension_name}", response_model=DomainDimensionResponse)
+def update_domain_dimension(
+    domain_id: UUID,
+    dimension_name: str,
+    dimension: DomainDimensionUpdate,
+    db: Session = Depends(get_db),
+):
+    return crud.update_domain_dimension(db, domain_id, dimension_name, dimension)
+
+
+@router.post(
+    "/{domain_id}/metrics",
+    response_model=DomainMetricResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_domain_metric(
+    domain_id: UUID, metric: DomainMetricCreate, db: Session = Depends(get_db)
+):
+    return crud.add_domain_metric(db, domain_id, metric)
+
+
+@router.get("/{domain_id}/metrics", response_model=list[DomainMetricResponse])
+def list_domain_metrics(domain_id: UUID, db: Session = Depends(get_db)):
+    return crud.list_domain_metrics(db, domain_id)

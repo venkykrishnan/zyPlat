@@ -2,7 +2,7 @@
 
 import os
 import uuid
-from datetime import date
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pandas as pd
@@ -28,6 +28,7 @@ from backend.app.models.domain import (
     DomainMetricDataType,
 )
 from backend.app.models.taxonomy import DefinitionScope
+from backend.app.models import application as _application_models  # noqa: F401
 
 
 # Test database setup
@@ -100,7 +101,14 @@ def snapshot_factory(db_session):
             scope_type=DefinitionScope.GLOBAL,
             dimensions=[
                 _dimension("account", DomainDimensionDataType.STRING, True, 1),
-                _dimension("period", DomainDimensionDataType.DATE, True, 2),
+                _dimension(
+                    "period",
+                    DomainDimensionDataType.DATETIME,
+                    True,
+                    2,
+                    is_time_series=True,
+                    period_type=PeriodGranularity.DATE,
+                ),
                 _dimension("tags", DomainDimensionDataType.ARRAY_STRING, False, 3),
             ],
             metrics=[
@@ -137,20 +145,33 @@ def gl_frame() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "account": ["1000", "2000"],
-            "period": [date(2026, 1, 1), date(2026, 2, 1)],
+            "period": [
+                datetime(2026, 1, 1, tzinfo=UTC),
+                datetime(2026, 2, 1, tzinfo=UTC),
+            ],
             "amount": [Decimal("10.50"), Decimal("-3.25")],
             "units": [1, None],
         }
     )
 
 
-def _dimension(name: str, data_type, required: bool, ordinal: int) -> DomainDimension:
+def _dimension(
+    name: str,
+    data_type,
+    required: bool,
+    ordinal: int,
+    *,
+    is_time_series: bool = False,
+    period_type: PeriodGranularity | None = None,
+) -> DomainDimension:
     return DomainDimension(
         name=name,
         display_name=name.title(),
         data_type=data_type,
         required=required,
         ordinal=ordinal,
+        is_time_series=is_time_series,
+        period_type=period_type,
     )
 
 

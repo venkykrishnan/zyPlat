@@ -8,6 +8,7 @@ such as ``1.5 -> int64`` or ``Decimal`` values that need more than the allowed s
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping
+from datetime import UTC, datetime
 from typing import TypeAlias
 
 import pandas as pd
@@ -15,6 +16,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 from ...core.exceptions import ValidationError
+from ...models.company import PeriodGranularity
 from ...models.domain import DomainDimensionDataType
 from .schema import DECIMAL_SCALE, ColumnKind, ColumnSpec, FrameSpec
 
@@ -66,6 +68,7 @@ def validate_frame(
     arrays, problems = _convert_columns(frame, spec)
     if allowed_values:
         problems += _taxonomy_problems(arrays, spec, allowed_values)
+    problems += _time_series_period_problems(arrays, spec)
     if problems:
         raise _validation_error(spec, problems)
 
@@ -187,6 +190,59 @@ def _taxonomy_problems(
         if problem:
             problems.append(problem)
     return problems
+
+
+def _time_series_period_problems(arrays: Mapping[str, ArrowColumn], spec: FrameSpec) -> list[str]:
+    """Require time-series DATETIME values to be UTC midnight at the period start."""
+    time_series_columns = [c for c in spec.columns if c.is_time_series]
+    if not time_series_columns:
+        return []
+    if len(time_series_columns) > 1:
+        names = [c.name for c in time_series_columns]
+        return [f"domain has multiple time-series dimensions {names}; expected exactly one"]
+
+    column = time_series_columns[0]
+    if column.period_type is None:
+        return [f"time-series dimension '{column.name}' is missing period_type"]
+    if column.name not in arrays:
+        return [f"missing required time-series column '{column.name}'"]
+
+    array = arrays[column.name]
+    if not pa.types.is_timestamp(array.type):
+        return [f"time-series column '{column.name}' must be DATETIME, got {array.type}"]
+
+    bad: list[str] = []
+    for value in array.to_pylist():
+        if value is None:
+            continue
+        if not isinstance(value, datetime):
+            bad.append(repr(value))
+            continue
+        aware = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+        aware = aware.astimezone(UTC)
+        expected = _period_start(aware, column.period_type)
+        if aware != expected:
+            bad.append(aware.isoformat().replace("+00:00", "Z"))
+        if len(bad) >= MAX_REPORTED_VALUES:
+            break
+    if not bad:
+        return []
+    more = ""  # capped list; exact remaining count is not available once truncated
+    return [
+        f"time-series column '{column.name}' ({column.period_type.value}) has values "
+        f"not aligned to period start: {bad}{more}"
+    ]
+
+
+def _period_start(value: datetime, period_type: PeriodGranularity) -> datetime:
+    if period_type is PeriodGranularity.YEAR:
+        return datetime(value.year, 1, 1, tzinfo=UTC)
+    if period_type is PeriodGranularity.QUARTER:
+        month = ((value.month - 1) // 3) * 3 + 1
+        return datetime(value.year, month, 1, tzinfo=UTC)
+    if period_type is PeriodGranularity.MONTH:
+        return datetime(value.year, value.month, 1, tzinfo=UTC)
+    return datetime(value.year, value.month, value.day, tzinfo=UTC)
 
 
 def _disallowed_values_problem(

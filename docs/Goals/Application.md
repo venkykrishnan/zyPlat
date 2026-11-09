@@ -8,7 +8,7 @@ This document introduces the notion of applications along with instantiation of 
 
 ### Application
 
-An application is an entity that has a configuration of domains. THe domains should exist prior creating an application.
+An application is an entity that has a configuration of domains. The domains should exist prior creating an application.
 A domain can be configured as an input or output entity.
 An application has a name, description and version. Versions belong to one logical
 application (`application_id`). The logical application has a **status**
@@ -29,37 +29,38 @@ A principal notion in *zyPlat* around time (period). There are 2 distinct notion
 
  1. Snapshot Period - This is currently implemented as company period. It supports period_type (which can be year, quarter, month, date).
  2. Time Series domain - A domain can be a time series, i.e., such a domain has a period field. Its domain instances are tabular with rows per period.
-   *Note:* the below items are enhancements to the domain design and implementation and needs to be made as part of this goal.
-   2.1. One of the fields in the domain needs to be identified as *the time series* field. This field has to have the data_type of `DATETIME`. There can be only one such field.
-   2.2. Similar to the snapshot period, this time series field can be year, quarter, month, date. As part of this goal scope, this field needs to be validated (when domain instance is imported)
-   in terms of its "period_type".
+   2.1. One of the fields in the domain needs to be identified as *the time series* field (`is_time_series` + `period_type`). This field has to have the data_type of `DATETIME`. There can be only one such field.
+   2.2. Similar to the snapshot period, this time series field can be year, quarter, month, date. Import validation requires UTC midnight at period start.
 
 An application has a notion of a *bind instance*. There can be several bind instances for an application.
-A bind instance is a set of domain instances for a company. This bind instance has a snapshot period. This snapshot is for most cases the company's snapshot period (id).
-A bind instance in some situations may have its own snapshot period (over and above the company snapshot). An example is for the BBC where there may be multiple bind instances with the same company
-snapshot period (example Jul 2026) and is delineated by the bind_snapshot (5Jul2026 and 15Jul2026).
+A bind instance is one **company-period view** (for example July 2026): company-tied domains contribute one snapshot each; independent domains (BBC) may contribute **many** date snapshots contained in that period as members — not one bind instance per BBC date.
 
-## Open Questions
+## Decided answers (from plan review)
 
-1. What should be the api separation between application, bind instances (should they be bind)? 
-2. Taxonomy and domains may be pre-created (ahead of an application creation). Will the application creation check if the application's domain and taxonomy already exist and if
-they do, ensure that the domains' dimensions & metrics of the existing domains are consistent with the application's requirement? If not, then application creation should fail. 
+1. Routes: `/api/v1/applications/...` for definition/lifecycle; bind instances under
+   `/versions/{version}/bind-instances`.
+2. Create validates a required subset of the live domain schema and does not create domains.
+3. Applications are global; status on the logical app; default version pointer with auto-default
+   on create and explicit set-default; GET by id returns default.
+4. BBC-like domains use `snapshot_alignment = INDEPENDENT` with null `company_snapshot_id`.
+5. Bind writes require `PUBLISHED`.
+6. Full design: `docs/plans/application-service.plan.md`.
 
 ## Use cases to be supported
 
  1. CRUD REST API for Application. This includes validating the company information with the company service and domain with domain apis.
  2. Default version: auto-default on new version; explicit set-default; get-by-id returns the default version.
  3. Application lifecycle at the logical application level: Draft → Publish → Archive (and unpublish when no bind instances exist); bind-instance writes only when Published.
- 4. Updates to the domain & domain instances to incorporate the changes proposed in the background section above.
- 5. CRUD REST API for application bind instances. The application and bind instances can be distinct routes.
+ 4. Updates to the domain & domain instances to incorporate time-series field and independent snapshots.
+ 5. CRUD REST API for application bind instances (July-view containment for independent dates).
+ 6. CLI commands for create/list/publish/enable-company/create-bind-instance.
 
 ## Steps to be taken
 
-1. Review the above descriptions
-2. Address open questions and any other design questions to be addressed.
-3. Propose a plan and write the plan in this projects [plans](docs/plans folder). The plan needs to propose the programming language, framework, persisent store for this goal.
-4. Get my input on the the proposed plan. Then update the goal, especially the
-use cases to be supported, and the plans based on this review.
-5. Break the work down into manageable PRs so that they can be reviewed easily.
-6. Clearly idenitfy spearate PRs that modify current existing entities like company, taxonomy, domain and instances.
-7. Implement the plan especially with unit and integration tests.
+1. Review the above descriptions — done.
+2. Address open questions and any other design questions — decided in the plan.
+3. Propose a plan — `docs/plans/application-service.plan.md`.
+4. Get input and update goal/plan — done.
+5. Break the work into manageable PRs — plan §10.
+6. Identify separate PRs that modify existing entities — plan §10 (PR1, PR2, PR4).
+7. Implement the plan with unit and integration tests — done on `feature/application-service`.

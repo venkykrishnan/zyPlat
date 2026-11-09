@@ -24,6 +24,7 @@ try:
     # Import Base and all models
     from app.core.database import Base  # type: ignore
     from app.models import (  # noqa: F401
+        application,
         company,
         domain,
         taxonomy,

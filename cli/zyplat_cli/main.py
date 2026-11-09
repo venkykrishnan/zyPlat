@@ -274,5 +274,106 @@ def domain_list(ctx):
         raise click.Abort() from e
 
 
+@cli.group()
+def application():
+    """Manage applications"""
+    pass
+
+
+@application.command("create")
+@click.option("--file", "-f", type=click.Path(exists=True), required=True)
+@click.pass_context
+def application_create(ctx, file: str):
+    """Create an application from a JSON file"""
+    client = ctx.obj["client"]
+    try:
+        with open(file) as handle:
+            data = json.load(handle)
+        result = client.create_application(data)
+        console.print(
+            f"[green]✓[/green] Created application {result['application_id']} "
+            f"version {result['version']} ({result['status']})"
+        )
+    except Exception as e:
+        console.print(f"[red]✗[/red] Error: {e}")
+        raise click.Abort() from e
+
+
+@application.command("list")
+@click.pass_context
+def application_list(ctx):
+    """List applications"""
+    client = ctx.obj["client"]
+    try:
+        apps = client.list_applications()
+        table = Table(title="Applications")
+        table.add_column("Application ID", style="magenta")
+        table.add_column("Status", style="yellow")
+        table.add_column("Default Version", style="green")
+        for app in apps:
+            table.add_row(
+                app["application_id"],
+                app["status"],
+                app.get("default_version") or "",
+            )
+        console.print(table)
+    except Exception as e:
+        console.print(f"[red]✗[/red] Error: {e}")
+        raise click.Abort() from e
+
+
+@application.command("publish")
+@click.argument("application_id")
+@click.pass_context
+def application_publish(ctx, application_id: str):
+    """Publish an application"""
+    client = ctx.obj["client"]
+    try:
+        result = client.publish_application(application_id)
+        console.print(f"[green]✓[/green] Published {result['application_id']} ({result['status']})")
+    except Exception as e:
+        console.print(f"[red]✗[/red] Error: {e}")
+        raise click.Abort() from e
+
+
+@application.command("enable-company")
+@click.argument("application_id")
+@click.argument("version")
+@click.argument("company_id")
+@click.pass_context
+def application_enable_company(ctx, application_id: str, version: str, company_id: str):
+    """Enable a company on an application version"""
+    client = ctx.obj["client"]
+    try:
+        result = client.enable_application_company(application_id, version, company_id)
+        console.print(
+            f"[green]✓[/green] Enabled {result['company_id']} on " f"{application_id}@{version}"
+        )
+    except Exception as e:
+        console.print(f"[red]✗[/red] Error: {e}")
+        raise click.Abort() from e
+
+
+@application.command("create-bind-instance")
+@click.argument("application_id")
+@click.argument("version")
+@click.option("--file", "-f", type=click.Path(exists=True), required=True)
+@click.pass_context
+def application_create_bind_instance(ctx, application_id: str, version: str, file: str):
+    """Create a bind instance from a JSON file"""
+    client = ctx.obj["client"]
+    try:
+        with open(file) as handle:
+            data = json.load(handle)
+        result = client.create_bind_instance(application_id, version, data)
+        console.print(
+            f"[green]✓[/green] Created bind instance {result['id']} for "
+            f"{result['company_id']} {result['period_type']} {result['period_value']}"
+        )
+    except Exception as e:
+        console.print(f"[red]✗[/red] Error: {e}")
+        raise click.Abort() from e
+
+
 if __name__ == "__main__":
     cli(obj={})

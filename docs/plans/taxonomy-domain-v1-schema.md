@@ -321,6 +321,8 @@ CREATE TABLE domain_dimensions (
   taxonomy_id TEXT NULL,
   taxonomy_version_strategy taxonomy_version_strategy NULL,
   taxonomy_version TEXT NULL,
+  is_time_series BOOLEAN NOT NULL DEFAULT FALSE,
+  period_type period_granularity NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT uq_domain_dimensions_name UNIQUE (domain_definition_id, name),
@@ -339,8 +341,19 @@ CREATE TABLE domain_dimensions (
           (taxonomy_version_strategy = 'LATEST_PUBLISHED' AND taxonomy_version IS NULL)
         )
       )
+    ),
+  CONSTRAINT ck_domain_dimension_time_series_fields
+    CHECK (
+      (is_time_series = FALSE AND period_type IS NULL)
+      OR
+      (is_time_series = TRUE AND period_type IS NOT NULL AND data_type = 'DATETIME')
     )
 );
+
+-- At most one time-series dimension per domain definition.
+CREATE UNIQUE INDEX uq_domain_dimensions_one_time_series
+  ON domain_dimensions (domain_definition_id)
+  WHERE is_time_series = TRUE;
 
 CREATE INDEX ix_domain_dimensions_taxonomy_lookup
   ON domain_dimensions (taxonomy_id, taxonomy_version_strategy, taxonomy_version);
@@ -407,11 +420,17 @@ EXECUTE FUNCTION set_updated_at();
 
 ### 7.2 domain_instance_snapshots (association to company snapshot tuples)
 
+Company-tied snapshots keep a non-null `company_snapshot_id`. Independent snapshots
+(application `snapshot_alignment = INDEPENDENT`) set `company_snapshot_id` null and carry their
+own `snapshot_period_type` / `snapshot_period_value` (migration `20261105_0006`).
+
 ```sql
 CREATE TABLE domain_instance_snapshots (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   domain_instance_id UUID NOT NULL REFERENCES domain_instances(id) ON DELETE CASCADE,
-  company_snapshot_id UUID NOT NULL REFERENCES company_snapshots(id) ON DELETE CASCADE,
+  company_snapshot_id UUID NULL REFERENCES company_snapshots(id) ON DELETE CASCADE,
+  snapshot_period_type period_granularity NULL,
+  snapshot_period_value TEXT NULL,
   storage_uri TEXT NULL,
   row_count BIGINT NULL,
   schema_hash VARCHAR(64) NULL,
@@ -419,8 +438,6 @@ CREATE TABLE domain_instance_snapshots (
   calc_run_id VARCHAR NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT uq_domain_instance_company_snapshot
-    UNIQUE (domain_instance_id, company_snapshot_id),
   CONSTRAINT uq_domain_instance_snapshots_storage_uri UNIQUE (storage_uri),
   CONSTRAINT ck_domain_instance_snapshots_storage_pointer_complete CHECK (
     (storage_uri IS NULL) = (row_count IS NULL)
@@ -428,8 +445,47 @@ CREATE TABLE domain_instance_snapshots (
     AND (storage_uri IS NULL) = (checksum IS NULL)
   ),
   CONSTRAINT ck_domain_instance_snapshots_row_count_non_negative
-    CHECK (row_count IS NULL OR row_count >= 0)
+    CHECK (row_count IS NULL OR row_count >= 0),
+  CONSTRAINT ck_domain_instance_snapshots_alignment CHECK (
+    (
+      company_snapshot_id IS NOT NULL
+      AND snapshot_period_type IS NULL
+      AND snapshot_period_value IS NULL
+    )
+    OR (
+      company_snapshot_id IS NULL
+      AND snapshot_period_type IS NOT NULL
+      AND snapshot_period_value IS NOT NULL
+    )
+  ),
+  CONSTRAINT ck_domain_instance_snapshots_period_format CHECK (
+    snapshot_period_type IS NULL
+    OR (
+      (snapshot_period_type = 'YEAR' AND snapshot_period_value ~ '^[0-9]{4}$')
+      OR (snapshot_period_type = 'QUARTER' AND snapshot_period_value ~ '^[0-9]{4}Q[1-4]$')
+      OR (
+        snapshot_period_type = 'MONTH'
+        AND snapshot_period_value ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'
+      )
+      OR (
+        snapshot_period_type = 'DATE'
+        AND snapshot_period_value ~ '^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$'
+      )
+    )
+  )
 );
+
+-- Company-tied: one snapshot per (instance, company snapshot).
+CREATE UNIQUE INDEX uq_domain_instance_company_snapshot
+  ON domain_instance_snapshots (domain_instance_id, company_snapshot_id)
+  WHERE company_snapshot_id IS NOT NULL;
+
+-- Independent: one snapshot per (instance, period).
+CREATE UNIQUE INDEX uq_domain_instance_independent_period
+  ON domain_instance_snapshots (
+    domain_instance_id, snapshot_period_type, snapshot_period_value
+  )
+  WHERE company_snapshot_id IS NULL;
 
 CREATE INDEX ix_domain_instance_snapshots_company_snapshot
   ON domain_instance_snapshots(company_snapshot_id);
@@ -447,6 +503,9 @@ Note: default snapshot head materialization is handled at company level via `com
 The `storage_*`, `row_count`, `schema_hash`, `checksum`, and `calc_run_id` columns point at the
 immutable Parquet file that holds a TIME_SERIES snapshot's rows. They are set together, once,
 when the file is written (migration `20261031_0002`). See `instance-data-storage.md`.
+
+Application tables (`applications`, versions, domains, companies, bind instances) are defined in
+`docs/plans/application-service.plan.md` §6 and migrations `20261105_0005` / `20261105_0006`.
 
 ### 7.3 domain_instance_entities
 

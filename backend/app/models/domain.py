@@ -19,6 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func, text
 
 from ..core.database import Base
+from .company import PeriodGranularity
 from .taxonomy import DefinitionScope
 
 
@@ -126,33 +127,48 @@ class DomainDimension(Base):
         Enum(TaxonomyVersionStrategy, name="taxonomy_version_strategy"), nullable=True
     )
     taxonomy_version = Column(String, nullable=True)
+    is_time_series = Column(Boolean, nullable=False, server_default=text("FALSE"))
+    period_type: Mapped[PeriodGranularity | None] = mapped_column(
+        Enum(PeriodGranularity, name="period_granularity", create_type=False), nullable=True
+    )
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "domain_definition_id", "name", name="uq_domain_dimensions_definition_name"
-        ),
-        UniqueConstraint(
-            "domain_definition_id", "ordinal", name="uq_domain_dimensions_definition_ordinal"
-        ),
+        UniqueConstraint("domain_definition_id", "name", name="uq_domain_dimensions_name"),
+        UniqueConstraint("domain_definition_id", "ordinal", name="uq_domain_dimensions_ordinal"),
+        CheckConstraint("length(trim(name)) > 0", name="ck_domain_dimension_name_not_empty"),
         CheckConstraint(
             """
             (taxonomy_id IS NULL AND taxonomy_version_strategy IS NULL AND taxonomy_version IS NULL)
             OR
-            (taxonomy_id IS NOT NULL AND taxonomy_version_strategy IS NOT NULL)
+            (
+              taxonomy_id IS NOT NULL
+              AND taxonomy_version_strategy IS NOT NULL
+              AND (
+                (taxonomy_version_strategy = 'PINNED' AND taxonomy_version IS NOT NULL)
+                OR
+                (taxonomy_version_strategy = 'LATEST_PUBLISHED' AND taxonomy_version IS NULL)
+              )
+            )
             """,
-            name="ck_domain_dimension_taxonomy_fields",
+            name="ck_domain_dimensions_taxonomy_binding",
         ),
         CheckConstraint(
             """
-            (taxonomy_version_strategy != 'PINNED' AND taxonomy_version IS NULL)
+            (is_time_series = FALSE AND period_type IS NULL)
             OR
-            (taxonomy_version_strategy = 'PINNED' AND taxonomy_version IS NOT NULL)
+            (is_time_series = TRUE AND period_type IS NOT NULL AND data_type = 'DATETIME')
             """,
-            name="ck_domain_dimension_pinned_version",
+            name="ck_domain_dimension_time_series_fields",
+        ),
+        Index(
+            "uq_domain_dimensions_one_time_series",
+            "domain_definition_id",
+            unique=True,
+            postgresql_where=text("is_time_series = TRUE"),
         ),
         Index("ix_domain_dimensions_definition", "domain_definition_id"),
     )
@@ -237,8 +253,12 @@ class DomainInstanceSnapshot(Base):
         UUID(as_uuid=True), ForeignKey("domain_instances.id", ondelete="CASCADE"), nullable=False
     )
     company_snapshot_id = Column(
-        UUID(as_uuid=True), ForeignKey("company_snapshots.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True), ForeignKey("company_snapshots.id", ondelete="CASCADE"), nullable=True
     )
+    snapshot_period_type: Mapped[PeriodGranularity | None] = mapped_column(
+        Enum(PeriodGranularity, name="period_granularity", create_type=False), nullable=True
+    )
+    snapshot_period_value = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
@@ -253,10 +273,57 @@ class DomainInstanceSnapshot(Base):
     calc_run_id: Mapped[str | None] = mapped_column(String, nullable=True)
 
     __table_args__ = (
-        UniqueConstraint(
-            "domain_instance_id", "company_snapshot_id", name="uq_domain_instance_company_snapshot"
+        # Company-tied and independent alignments are mutually exclusive and uniquely keyed.
+        Index(
+            "uq_domain_instance_company_snapshot",
+            "domain_instance_id",
+            "company_snapshot_id",
+            unique=True,
+            postgresql_where=text("company_snapshot_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_domain_instance_independent_snapshot",
+            "domain_instance_id",
+            "snapshot_period_type",
+            "snapshot_period_value",
+            unique=True,
+            postgresql_where=text("company_snapshot_id IS NULL"),
         ),
         UniqueConstraint("storage_uri", name="uq_domain_instance_snapshots_storage_uri"),
+        CheckConstraint(
+            """
+            (
+              company_snapshot_id IS NOT NULL
+              AND snapshot_period_type IS NULL
+              AND snapshot_period_value IS NULL
+            )
+            OR
+            (
+              company_snapshot_id IS NULL
+              AND snapshot_period_type IS NOT NULL
+              AND snapshot_period_value IS NOT NULL
+            )
+            """,
+            name="ck_domain_instance_snapshots_alignment",
+        ),
+        CheckConstraint(
+            """
+            snapshot_period_type IS NULL
+            OR (
+              (snapshot_period_type = 'YEAR' AND snapshot_period_value ~ '^[0-9]{4}$')
+              OR (snapshot_period_type = 'QUARTER' AND snapshot_period_value ~ '^[0-9]{4}Q[1-4]$')
+              OR (
+                snapshot_period_type = 'MONTH'
+                AND snapshot_period_value ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'
+              )
+              OR (
+                snapshot_period_type = 'DATE'
+                AND snapshot_period_value ~ '^[0-9]{4}-(0[1-9]|1[0-2])-([0-2][0-9]|3[0-1])$'
+              )
+            )
+            """,
+            name="ck_domain_instance_snapshots_period_format",
+        ),
         CheckConstraint(
             """
             (storage_uri IS NULL) = (row_count IS NULL)

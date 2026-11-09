@@ -45,6 +45,7 @@ V1 service modules:
 2. `taxonomy` service
 3. `domain` service
 4. `domain-instance` service
+5. `application` service
 
 ### Ownership model
 
@@ -86,6 +87,8 @@ app/
     domain/
       ...
     domain_instance/
+      ...
+    application/
       ...
 tests/
 ```
