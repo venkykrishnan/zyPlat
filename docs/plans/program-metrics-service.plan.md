@@ -1,4 +1,4 @@
-# Program and Metrics Service Plan (Draft v1)
+# Program and Metrics Service Plan (Draft v1.1) - vk responses on 11 Nov 2026
 
 Status: **awaiting review**. This plan follows `docs/Goals/ProgramAndMetric.md` steps 1–3.
 Implementation (step 5) starts only after step 4 (your input).
